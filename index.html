@@ -56,6 +56,7 @@ h1{font-family:var(--vhs);font-weight:400;font-size:clamp(56px,14vw,104px);margi
 .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
 .diff{display:flex;justify-content:center;gap:6px;margin:0 0 14px}
 .diff button{font-family:var(--vhs);font-size:13px;padding:6px 14px;background:transparent;color:var(--muted);border:1px solid var(--line);cursor:pointer}
+.stagesel{flex-wrap:wrap}
 .diff button[aria-pressed=true]{color:var(--bg);border-color:#f3df7a;background:#f3df7a}
 .help{font-size:12px;color:var(--muted);line-height:1.9;margin-top:22px}
 .help kbd{font-family:var(--vhs);border:1px solid var(--line);padding:0 5px;color:var(--fg)}
@@ -172,6 +173,14 @@ h1{font-family:var(--vhs);font-weight:400;font-size:clamp(56px,14vw,104px);margi
       <button data-q="0" aria-pressed="false">画質：かるい</button>
       <button data-q="1" aria-pressed="false">ふつう</button>
       <button data-q="2" aria-pressed="true">きれい</button>
+    </div>
+    <div class="diff stagesel" role="group" aria-label="スタートするステージ">
+      <button data-st="1" aria-pressed="true">STAGE 1から</button>
+      <button data-st="2" aria-pressed="false">2</button>
+      <button data-st="3" aria-pressed="false">3</button>
+      <button data-st="4" aria-pressed="false">4</button>
+      <button data-st="5" aria-pressed="false">5</button>
+      <button data-st="6" aria-pressed="false">6</button>
     </div>
     <div class="diff" role="group" aria-label="視点">
       <button data-v="top" aria-pressed="true">見下ろし</button>
@@ -1409,7 +1418,13 @@ function toTitle(){hideS3UI();
   state='title';show('pauseOv',false);show('endOv',false);show('noteOv',false);show('hud',false);setTouchUI(false);show('title',true);AU.silence();loadBest();$('fear').style.opacity=0;placeLabels([]);setOnlineUI();}
 function openNote(id){const n=typeof id==='object'?id:NOTES[id];state='note';AU.page();$('noteH').textContent=n.h;$('noteP').textContent=n.p;show('noteOv',true);if(!isOnline())AU.silence();if(document.pointerLockElement)document.exitPointerLock();}
 function closeNote(){if(state!=='note')return;show('noteOv',false);state='play';last=performance.now();lockPtr();}
-$('startBtn').onclick=()=>start();$('retryBtn').onclick=()=>start();$('titleBtn').onclick=toTitle;$('quitBtn').onclick=toTitle;$('resumeBtn').onclick=resume;
+// pick where a fresh game begins (4 = right after Sonic.exe); remembered per browser
+let startStageSel=1;try{const v=+localStorage.getItem('noclip_startstage');if(v>=1&&v<=6)startStageSel=v;}catch(e){}
+function setStartStage(n){startStageSel=n;try{localStorage.setItem('noclip_startstage',n);}catch(e){}
+  document.querySelectorAll('[data-st]').forEach(b=>{b.setAttribute('aria-pressed',+b.dataset.st===n);if(b.dataset.st==='1')b.textContent=n===1?'STAGE 1から':'1';else b.textContent=+b.dataset.st===n?`STAGE ${n}から`:b.dataset.st;});}
+document.querySelectorAll('[data-st]').forEach(b=>b.addEventListener('click',()=>setStartStage(+b.dataset.st)));setStartStage(startStageSel);
+const startFresh=()=>start(startStageSel>1?{stage:startStageSel,diff,time:0}:undefined);
+$('startBtn').onclick=startFresh;$('retryBtn').onclick=startFresh;$('titleBtn').onclick=toTitle;$('quitBtn').onclick=toTitle;$('resumeBtn').onclick=resume;
 $('pauseBtn').onclick=pause;$('dlg').addEventListener('pointerdown',e=>{e.preventDefault();advanceDlg();});$('prompt').addEventListener('pointerdown',e=>{e.preventDefault();s3Action('KeyE');});$('noteOv').addEventListener('pointerdown',closeNote);
 // invite link: opening it fills in the room code
 // keep the friends-only key (?key=…) so the invite opens for them too
