@@ -666,7 +666,7 @@ function exeLines(){say([['Sonic.exe','Hello. I have found you.'],['Sonic.exe','
   ()=>{const s=G.s3;s.phase='laugh';s.t=0;AU.laugh();});}
 function s3Die(){const me=G.ps[G.me];if(me.status!=='alive')return;show('mash',false);show('mashTap',false);
   if(isClient()){me.status='caught';me.time=G.time;try{NET.conn.send({t:'dead'});}catch(e){}localCaught();}else playerDone(G.me,'caught');}
-const WALK=3,RUN=5,EXE1=WALK*1.3,EXE2=RUN*1.5;
+const WALK=3,RUN=5,EXE1=WALK*1.1,EXE2=RUN*1.3;
 function update2D(dt,frozen){
   const p=G.p,s=G.s3;s.t+=dt;
   // --- the wanderer ---
