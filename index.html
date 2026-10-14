@@ -181,6 +181,7 @@ h1{font-family:var(--vhs);font-weight:400;font-size:clamp(56px,14vw,104px);margi
       <button data-st="4" aria-pressed="false">4</button>
       <button data-st="5" aria-pressed="false">5</button>
       <button data-st="6" aria-pressed="false">6</button>
+      <button data-st="7" aria-pressed="false">7</button>
     </div>
     <div class="diff" role="group" aria-label="視点">
       <button data-v="top" aria-pressed="true">見下ろし</button>
@@ -429,7 +430,7 @@ function chunk(rx,ry){const k=rx*8192+ry;let c=CH.get(k);
 // with friends the map is a closed 7x7-room square (42x42 cells) around the start; alone it never ends
 const FR=3,FX0=(R0-FR)*P,FX1=(R0+FR+1)*P;let FIN=false;
 const inMap=(x,y)=>!FIN||(x>FX0&&x<FX1&&y>FX0&&y<FX1);
-const WALLV=()=>STAGE===4?9:STAGE===6?12:1;
+const WALLV=()=>STAGE===4?9:STAGE===6?12:STAGE===7?13:1;
 function cellAt(x,y){x=Math.floor(x);y=Math.floor(y);if(STAGE===2)return tunnelCell(x,y);if(STAGE===5)return hallCell(x,y);if(FIN&&(x<=FX0||x>=FX1||y<=FX0||y>=FX1))return WALLV();
   const rx=Math.floor(x/P),ry=Math.floor(y/P),v=chunk(rx,ry)[(y-ry*P)*P+(x-rx*P)];return v===1?WALLV():v;}
 function setCell(x,y,v){const rx=Math.floor(x/P),ry=Math.floor(y/P);chunk(rx,ry)[(y-ry*P)*P+(x-rx*P)]=v;}
@@ -559,7 +560,7 @@ function trainFeedback(dt){
   else{AU.set(AU.trG,0);AU.set(AU.scG,0);}
 }
 function showBanner(t){const s=$('spotted');s.textContent=t;s.classList.remove('on');void s.offsetWidth;s.classList.add('on');}
-function startStage(n){if(n===6)startStage6();else if(n===5)startStage5();else if(n===4)startStage4();else if(n===3)startStage3();else startStage2();writeSave();refreshLoad();}
+function startStage(n){if(n===7)startStage7();else if(n===6)startStage6();else if(n===5)startStage5();else if(n===4)startStage4();else if(n===3)startStage3();else startStage2();writeSave();refreshLoad();}
 function startStage2(){
   if(!G)return;
   clearPoke();show('scare',false);document.body.classList.remove('shake');show('endOv',false);show('pauseOv',false);show('noteOv',false);
@@ -1120,6 +1121,87 @@ function updateMobs(dt){
 // sprite for one figure as seen from (vx,vy): its face, its back, or the scream
 function mobTex(m,vx,vy){if(m.state!=='idle')return MOB_RAGE;let fa=Math.atan2(vy-m.y,vx-m.x)-m.a;fa-=Math.round(fa/(2*Math.PI))*2*Math.PI;return Math.abs(fa)<1.3?MOB_FACE:MOB_BACK;}
 
+/* ---------- stage 7: the mirror maze ---------- */
+// Every wall is a mirror. Fakes in your own hazmat suits wander the maze wearing your friends' name tags —
+// but their tags read backwards. They creep up at a walking pace and touch you; run near one and it shows its face.
+T[13]=mkTex(g=>{const gr=g.createLinearGradient(0,0,64,64);gr.addColorStop(0,'#dfe6ea');gr.addColorStop(.5,'#9aa6ae');gr.addColorStop(1,'#c8d1d6');g.fillStyle=gr;g.fillRect(0,0,64,64);
+  g.fillStyle='rgba(255,255,255,.35)';for(const x of[10,18,44]){g.beginPath();g.moveTo(x,0);g.lineTo(x+6,0);g.lineTo(x-14,64);g.lineTo(x-20,64);g.closePath();g.fill();}
+  // a faint figure "in" the glass
+  g.fillStyle='rgba(60,60,40,.18)';g.beginPath();g.ellipse(32,22,6,7,0,0,7);g.fill();g.fillRect(25,28,14,22);g.fillRect(26,50,5,12);g.fillRect(33,50,5,12);
+  g.strokeStyle='#4a5258';g.lineWidth=3;g.strokeRect(1.5,1.5,61,61);grit(g,8);});
+const WTOP7=mkTex(g=>{g.fillStyle='#aab5bc';g.fillRect(0,0,64,64);g.fillStyle='rgba(255,255,255,.4)';g.fillRect(6,0,4,64);g.strokeStyle='#4a5258';g.strokeRect(1.5,1.5,61,61);grit(g,8);});
+const FLOOR7=mkTex(g=>{for(let y=0;y<2;y++)for(let x=0;x<2;x++){g.fillStyle=(x+y)%2?'#1c1c20':'#d9d9dc';g.fillRect(x*32,y*32,32,32);}grit(g,10);});
+// a fake that has stopped pretending: red visor, cracked mask
+function fakeFace(g){
+  const ell=(x,y,rx,ry,c)=>{g.fillStyle=c;g.beginPath();g.ellipse(x,y,rx,ry,0,0,7);g.fill();},o='#2a2208',col='#c9a51a';
+  g.fillStyle=o;g.fillRect(22,44,9,18);g.fillRect(33,44,9,18);g.fillStyle=col;g.fillRect(23,44,7,15);g.fillRect(34,44,7,15);
+  g.fillStyle=o;g.fillRect(19,18,26,30);g.fillStyle=col;g.fillRect(20,19,24,28);g.fillStyle=o;g.fillRect(9,22,11,5);g.fillRect(44,22,11,5);
+  g.fillStyle=col;g.fillRect(10,23,9,3);g.fillRect(45,23,9,3);g.fillStyle='#141414';g.fillRect(5,22,5,5);g.fillRect(54,22,5,5);
+  ell(32,11,10,10,o);ell(32,11,8.5,8.5,col);g.fillStyle='#ff2020';g.fillRect(26,6,12,6);g.fillStyle='#111';g.fillRect(31,6,1,6);
+  ell(32,16,4,3.5,'#111');g.strokeStyle='#111';g.lineWidth=1;g.beginPath();g.moveTo(28,3);g.lineTo(31,9);g.lineTo(29,13);g.stroke();
+}
+const HAZ_FAKE=mkTex(fakeFace,(r,gg,b)=>r>240&&gg<60&&b<60);
+function layoutStage7(){
+  const r=mulberry(SEED^0x7a11e7),an=r()*Math.PI*2,dist=15+r()*3;
+  const tx=Math.floor(START+Math.cos(an)*dist),ty=Math.floor(START+Math.sin(an)*dist);let ex=null;
+  for(let rad=0;rad<12&&!ex;rad++)for(let y=ty-rad;y<=ty+rad&&!ex;y++)for(let x=tx-rad;x<=tx+rad;x++){
+    if(Math.max(Math.abs(x-tx),Math.abs(y-ty))!==rad||!inMap(x-1,y-1)||!inMap(x+1,y+1)||cellAt(x,y)!==13)continue;
+    const lx=((x%P)+P)%P,ly=((y%P)+P)%P;if(lx===0&&ly===0)continue;
+    if((cellAt(x-1,y)===0&&cellAt(x+1,y)===0)||(cellAt(x,y-1)===0&&cellAt(x,y+1)===0)){ex={x,y};break;}}
+  setCell(ex.x,ex.y,5);G.exitPos=ex;G.exit={x:ex.x+.5,y:ex.y+.5};
+  const rooms=[];for(let ry=R0-FR;ry<=R0+FR;ry++)for(let rx=R0-FR;rx<=R0+FR;rx++)if(Math.abs(rx-R0)+Math.abs(ry-R0)>=2)rooms.push([rx,ry]);
+  for(let i=rooms.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[rooms[i],rooms[j]]=[rooms[j],rooms[i]];}
+  const slots=G.ps.filter(Boolean).map(q=>q.slot),fakes=[];
+  for(const[rx,ry]of rooms){if(fakes.length>=7)break;const x=rx*P+1.5+Math.floor(r()*5),y=ry*P+1.5+Math.floor(r()*5);
+    fakes.push({i:fakes.length,x,y,a:r()*Math.PI*2,slot:slots[Math.floor(r()*slots.length)],state:'roam',t:0,tgt:null,field:null,repath:0,moving:false});}
+  G.fakes=fakes;
+}
+function startStage7(){
+  if(!G)return;
+  clearPoke();show('scare',false);document.body.classList.remove('shake');show('endOv',false);show('pauseOv',false);show('noteOv',false);hideS3UI();
+  $('msg').classList.remove('show');msgT=0;
+  STAGE=7;LMV=.75;FIN=true;SEED=(SEED^0x7e7e7e)|0;CH=new Map();
+  G.stage=7;G.over=false;G.toStage2=false;G.results=null;G.enraged=false;G.train=null;G.s3=null;G.s5=null;G.arrows=[];G.shriekers=[];G.mobs=[];G.fixed=[];
+  G.taken=new Set();G.ltaken=new Set(['start']);layoutStage7();
+  for(const q of G.ps)if(q){const[ox,oy]=SPAWN[q.slot];q.status='alive';q.x=q.dx=START+ox;q.y=q.dy=START+oy;q.time=0;}
+  const me=G.ps[G.me];Object.assign(G.p,{x:me.x,y:me.y,a:0,pitch:0,stam:100,exh:false,bob:0});
+  Object.assign(G.g,{wait:1e9,state:'wander',tslot:-1});
+  try{view=localStorage.getItem('noclip_view')||'top';}catch(e){}
+  $('slots').parentNode.hidden=true;
+  $('stamp').innerHTML=(isOnline()?`ONLINE ${G.ps.filter(Boolean).length}P`:'SP')+'　STAGE 7<br>OCT.11 1996';
+  state='play';show('hud',true);setTouchUI(true);
+  const c=$('stageCard');c.innerHTML='<b>STAGE 7</b><span>― 鏡 ―</span>';c.classList.remove('on');void c.offsetWidth;c.classList.add('on');
+  msg(isOnline()?'鏡の迷路。仲間そっくりの何かがいる。名札が鏡文字なら、にせものだ。走るな。':'鏡の迷路。ここには、あなたしかいないはずだ。走るな。',7);
+  lockPtr();
+}
+function applyFake(ev){const f=G.fakes&&G.fakes[ev.i];if(!f)return;f.state='reveal';f.t=8;
+  const d=Math.hypot(f.x-G.p.x,f.y-G.p.y),v=clamp(1-d/24,.1,1);
+  AU.tone(240,1.2,.12*v,'sawtooth',0,90);AU.tone(250,1.2,.08*v,'square',.03,95);AU.noise(.8,900,2,.2*v,'bandpass');
+  if(d<12)showBanner('にせものだ');}
+function updateFakes(dt){
+  const D=DIFF[diff],act=alivePs();if(!act.length)return;
+  for(const f of G.fakes){
+    let q=act[0],nd=1e9;for(const o of act){const d=Math.hypot(f.x-o.x,f.y-o.y);if(d<nd){nd=d;q=o;}}
+    if(f.state==='reveal'){f.t-=dt;if(f.t<=0){f.state='roam';f.tgt=null;}}
+    else if(act.some(o=>o.run&&o.moving&&Math.hypot(f.x-o.x,f.y-o.y)<5)){const ev={t:'fake',i:f.i};if(isHost())bc(ev);applyFake(ev);}
+    else f.state=nd<7&&los(f.x,f.y,q.x,q.y)?'stalk':f.state==='stalk'&&nd<9?'stalk':'roam';
+    let tx,ty;
+    if(f.state!=='roam'){tx=Math.floor(q.x);ty=Math.floor(q.y);}
+    else{if(!f.tgt||(Math.floor(f.x)===f.tgt[0]&&Math.floor(f.y)===f.tgt[1])){const fl=bfsW(Math.floor(f.x),Math.floor(f.y)),c=[];
+        for(let i=0;i<WN*WN;i++)if(fl.d[i]>=2&&fl.d[i]<=6)c.push(i);const i=c.length?c[rnd(c.length)]:WH*WN+WH;f.tgt=[fl.ox+i%WN,fl.oy+(i/WN|0)];f.field=null;}
+      [tx,ty]=f.tgt;}
+    f.repath-=dt;if(f.repath<=0||!f.field||f.fieldT!==tx+','+ty){f.field=bfsW(tx,ty);f.fieldT=tx+','+ty;f.repath=.4;}
+    const spd=(f.state==='reveal'?4.2:f.state==='stalk'?2.4:1.0)*D.spd*dt,x0=f.x,y0=f.y;
+    if(f.state!=='roam'&&nd<1.6&&los(f.x,f.y,q.x,q.y)){f.x+=(q.x-f.x)/nd*Math.min(spd,nd);f.y+=(q.y-f.y)/nd*Math.min(spd,nd);}
+    else{const cx=Math.floor(f.x),cy=Math.floor(f.y),cur=fd(f.field,cx,cy);let nx=cx,ny=cy;
+      if(cur>0){for(const[ax,ay]of[[1,0],[-1,0],[0,1],[0,-1]]){const v=fd(f.field,cx+ax,cy+ay);if(v>=0&&v<cur){nx=cx+ax;ny=cy+ay;break;}}}
+      let ex=nx+.5,ey=ny+.5;if(nx!==cx&&Math.abs(cy+.5-f.y)>.08){ex=f.x;ey=cy+.5;}else if(ny!==cy&&Math.abs(cx+.5-f.x)>.08){ex=cx+.5;ey=f.y;}
+      const l=Math.hypot(ex-f.x,ey-f.y);if(l>.001){const s=Math.min(spd,l);f.x+=(ex-f.x)/l*s;f.y+=(ey-f.y)/l*s;}}
+    f.moving=Math.abs(f.x-x0)+Math.abs(f.y-y0)>1e-4;if(f.moving)f.a=Math.atan2(f.y-y0,f.x-x0);
+    if(f.state!=='roam'&&nd<.55)playerDone(q.slot,'caught');
+  }
+}
+
 /* ---------- story ---------- */
 const NOTES=[
   {h:'拾った紙切れ',p:'あれは目がいい。見通しのいい部屋では、遠くから見つかる。\n壁や柱の陰を歩け。\n走れば足音で気づかれる。\n床の赤い矢印は嘘をつく。出口は、矢印の反対にある。\n\n低い唸り声が聞こえたら、近くにいる。'},
@@ -1249,6 +1331,7 @@ function clientRecv(d){
   if(d.t==='s')applySnap(d);
   else if(d.t==='shriek')applyShriek(d);
   else if(d.t==='eye')applyEye(d);
+  else if(d.t==='fake')applyFake(d);
   else if(d.t==='fuse')applyFuse(d);
   else if(d.t==='spot')showSpotted();
   else if(d.t==='done')applyDone(d.slot,d.st);
@@ -1275,6 +1358,7 @@ function netTick(dt){
   netAcc+=dt;if(netAcc<1/15)return;netAcc=0;
   if(isHost()){const g=G.g;
     bc({t:'s',g:[+g.x.toFixed(2),+g.y.toFixed(2),+g.a.toFixed(2),g.state==='chase'?1:0,+g.chaseT.toFixed(2),g.wait>0?1:0,g.tslot],
+      F:G.stage===7?G.fakes.map(f=>[+f.x.toFixed(2),+f.y.toFixed(2),+f.a.toFixed(2),f.state[0],f.moving?1:0]):null,
       M:G.stage===6?G.mobs.map(m=>[+m.x.toFixed(2),+m.y.toFixed(2),+m.a.toFixed(2),m.state[0]]):null,
       P:G.ps.filter(Boolean).map(q=>[q.slot,+q.x.toFixed(2),+q.y.toFixed(2),+q.a.toFixed(2),q.status]),
       tr:G.train?[G.train.phase,+G.train.x.toFixed(2),+G.train.t.toFixed(2)]:null});}
@@ -1282,6 +1366,7 @@ function netTick(dt){
     try{NET.conn.send({t:'p',x:+p.x.toFixed(2),y:+p.y.toFixed(2),a:+p.a.toFixed(2),r:p.run?1:0,m:p.moving?1:0});}catch(e){}}
 }
 function applySnap(d){const g=G.g,s=d.g;
+  if(d.F&&G.stage===7&&G.fakes)d.F.forEach((v,i)=>{const f=G.fakes[i];if(!f)return;f.x=v[0];f.y=v[1];f.a=v[2];f.state={r:'reveal',s:'stalk'}[v[3]]||'roam';f.moving=!!v[4];});
   if(d.M&&G.stage===6&&G.mobs)d.M.forEach((v,i)=>{const m=G.mobs[i];if(!m)return;m.x=v[0];m.y=v[1];m.a=v[2];m.state=v[3]==='i'?'idle':v[3]==='w'?'wind':'rage';});
   if(d.tr&&G.stage===2){const tr=G.train||(G.train={});tr.phase=d.tr[0];tr.x=d.tr[1];tr.t=d.tr[2];}
   g.nx=s[0];g.ny=s[1];g.a=s[2];g.state=s[3]?'chase':'wander';g.chaseT=s[4];g.wait=s[5]?1:0;g.tslot=s[6];
@@ -1351,7 +1436,7 @@ const tc=t=>[t/3600,t/60%60,t%60].map(v=>String(Math.floor(v)).padStart(2,'0')).
 // save slots: an auto checkpoint plus three slots you pick; a save is the start of the stage you were on
 const SLOTS=['auto','1','2','3'],slotName=k=>k==='auto'?'オート':'データ'+k;
 const slotKey=k=>'noclip_save_'+k;
-function okSave(v){return v&&v.stage>=1&&v.stage<=6&&v.diff>=0&&v.diff<=2?v:null;}
+function okSave(v){return v&&v.stage>=1&&v.stage<=7&&v.diff>=0&&v.diff<=2?v:null;}
 function readSlot(k){try{return okSave(JSON.parse(localStorage.getItem(slotKey(k))||'null'));}catch(e){return null;}}
 try{const old=localStorage.getItem('noclip_save');if(old&&!localStorage.getItem(slotKey('1')))localStorage.setItem(slotKey('1'),old);localStorage.removeItem('noclip_save');}catch(e){}
 function curSave(){return{stage:G.stage,diff,time:Math.floor(G.time),at:Date.now()};}
@@ -1419,7 +1504,7 @@ function toTitle(){hideS3UI();
 function openNote(id){const n=typeof id==='object'?id:NOTES[id];state='note';AU.page();$('noteH').textContent=n.h;$('noteP').textContent=n.p;show('noteOv',true);if(!isOnline())AU.silence();if(document.pointerLockElement)document.exitPointerLock();}
 function closeNote(){if(state!=='note')return;show('noteOv',false);state='play';last=performance.now();lockPtr();}
 // pick where a fresh game begins (4 = right after Sonic.exe); remembered per browser
-let startStageSel=1;try{const v=+localStorage.getItem('noclip_startstage');if(v>=1&&v<=6)startStageSel=v;}catch(e){}
+let startStageSel=1;try{const v=+localStorage.getItem('noclip_startstage');if(v>=1&&v<=7)startStageSel=v;}catch(e){}
 function setStartStage(n){startStageSel=n;try{localStorage.setItem('noclip_startstage',n);}catch(e){}
   document.querySelectorAll('[data-st]').forEach(b=>{b.setAttribute('aria-pressed',+b.dataset.st===n);if(b.dataset.st==='1')b.textContent=n===1?'STAGE 1から':'1';else b.textContent=+b.dataset.st===n?`STAGE ${n}から`:b.dataset.st;});}
 document.querySelectorAll('[data-st]').forEach(b=>b.addEventListener('click',()=>setStartStage(+b.dataset.st)));setStartStage(startStageSel);
@@ -1443,7 +1528,7 @@ function playerDone(slot,st){   // host or single player only
   if(isHost())bc({t:'done',slot,st});
   applyDone(slot,st);
   // the first one out of stage 1 drags everybody (even the caught) onto the tracks
-  if(G.stage<6&&st==='escaped'&&!G.toStage2){G.toStage2=true;G.over=true;const g0=G,n=G.stage+1;
+  if(G.stage<7&&st==='escaped'&&!G.toStage2){G.toStage2=true;G.over=true;const g0=G,n=G.stage+1;
     if(isHost())bc({t:'stagesoon',name:q.name});
     setTimeout(()=>{if(G!==g0||G.stage!==n-1)return;if(isHost())bc({t:'stage',n});startStage(n);},3000);return;}
   if(G.toStage2)return;
@@ -1468,13 +1553,13 @@ function endScreenButtons(){
 function localEscape(){
   state='end';AU.silence();setTouchUI(false);if(document.pointerLockElement)document.exitPointerLock();placeLabels([]);
   $('endT').textContent='EXIT';$('endT').className='';$('fear').style.opacity=0;show('hud',false);
-  if(G.stage<6){
+  if(G.stage<7){
     $('endText').innerHTML=['','非常口を抜けた――はずだった。<br>足元に、冷たい鉄のレールが二本、闇の奥へ伸びている。','線路の果ての非常口を抜けた。<br>……世界が、平べったくなった気がする。',
-      'エレベーターは止まらずに、下へ、下へ。<br>扉が開くと、そこは真っ暗だった。','非常口の先は、コンクリートの長い廊下だった。<br>廊下の先に、何かが立っている。','扉の向こうは、白い廊下だった。<br>白い人影が、いくつも立っている。'][G.stage];
+      'エレベーターは止まらずに、下へ、下へ。<br>扉が開くと、そこは真っ暗だった。','非常口の先は、コンクリートの長い廊下だった。<br>廊下の先に、何かが立っている。','扉の向こうは、白い廊下だった。<br>白い人影が、いくつも立っている。','最後の扉――のはずだった。<br>開けた先は、鏡だらけの部屋だった。'][G.stage];
     $('endStat').textContent=(isOnline()?'全員で ':'')+`STAGE ${G.stage+1} へ……`;
     show('endOv',true);$('retryBtn').hidden=true;return;}
   const best=!isOnline()&&saveBest(G.time);
-  $('endText').innerHTML='最後の扉を開けると、朝の光が差し込んできた。<br>振り返っても、白い廊下はもうどこにもない。<br>ポケットの中で、誰かの手紙がかさりと鳴った。';
+  $('endText').innerHTML='鏡の迷路を抜けると、朝の光が差し込んできた。<br>ガラスに映った自分が、一拍遅れて手を振った。<br>……振ったのは、どっちだろう。';
   $('endStat').textContent=`${DIFF[diff].name}　脱出時間 ${fmt(G.time)}${best?'　最速記録！':''}`;
   show('endOv',true);endScreenButtons();
 }
@@ -1589,6 +1674,7 @@ function jumpscare(){
       else if(STAGE===2){g.scale(s/40,s/40);g.translate(-32,-34);trainFace(g);}
       else if(STAGE===4){g.scale(s/40,s/40);g.translate(-32,-30);roomkerPic(g);}
       else if(STAGE===5){g.scale(s/36,s/36);g.translate(-32,-16);statuePic(g);}
+      else if(STAGE===7){g.scale(s/34,s/34);g.translate(-32,-14);fakeFace(g);}
       else if(STAGE===6){g.scale(s/34,s/34);g.translate(-32,-14);mobBody(g);g.fillStyle='#050505';g.beginPath();g.ellipse(29,7,2.5,3.5,0,0,7);g.ellipse(35,7,2.5,3.5,0,0,7);g.fill();g.beginPath();g.ellipse(32,15,4.5,6,0,0,7);g.fill();}else drawGrin(g,0,0,s*.26,t*16,true);g.restore();
     }
     const id=g.getImageData(0,0,w,h);for(let y=0;y<h;y+=1+rnd(24)){if(Math.random()<.2){const off=(rnd(60)-30)*4,row=y*w*4;id.data.copyWithin(row+Math.max(0,off),row+Math.max(0,-off),row+w*4-Math.abs(off));}}g.putImageData(id,0,0);
@@ -1599,7 +1685,7 @@ function jumpscare(){
       g.fillStyle='#000';g.fillRect(0,h*.42,w,h*.16);g.fillStyle='#fff';g.font=`${Math.round(h*.08)}px DotGothic16, monospace`;g.textAlign='center';g.textBaseline='middle';g.fillText('NO SIGNAL',w/2,h/2);
       AU.tone(1000,.9,.12,'sine');
       setTimeout(()=>{if(state!=='end')return;show('scare',false);$('endT').textContent='信号途絶';$('endT').className='dead';
-        $('endText').innerHTML=STAGE===6?'白い腕が、肩をつかんだ。<br>最後に見たのは、真っ黒な口の奥だった。':STAGE===5?'首の後ろで、乾いた音がした。<br>まばたきをした覚えは、ない。':STAGE===4?'耳元で、湿った息の音がした。<br>あれには、最初から全部聞こえていた。':STAGE===3?'赤い目が、すぐ目の前で笑った。<br>「Good show.」':STAGE===2?'赤い車体と無数の脚が、視界を埋め尽くした。<br>レールの上に、カメラだけが転がっている。':'最後に映っていたのは、湿ったカーペットの上を<br>引きずられていく視界だった。<br>テープは、まだ回り続けている。';
+        $('endText').innerHTML=STAGE===7?'肩に置かれた手は、自分と同じ手袋をしていた。<br>名札の文字が、鏡のように反転している。':STAGE===6?'白い腕が、肩をつかんだ。<br>最後に見たのは、真っ黒な口の奥だった。':STAGE===5?'首の後ろで、乾いた音がした。<br>まばたきをした覚えは、ない。':STAGE===4?'耳元で、湿った息の音がした。<br>あれには、最初から全部聞こえていた。':STAGE===3?'赤い目が、すぐ目の前で笑った。<br>「Good show.」':STAGE===2?'赤い車体と無数の脚が、視界を埋め尽くした。<br>レールの上に、カメラだけが転がっている。':'最後に映っていたのは、湿ったカーペットの上を<br>引きずられていく視界だった。<br>テープは、まだ回り続けている。';
         if(isOnline()&&G.stage===1)$('endText').innerHTML+='<br>――誰かが脱出できれば、まだ終わりじゃない。';
         $('endStat').textContent=`${DIFF[diff].name}　STAGE ${G.stage}　記録時間 ${tc(G.ps[G.me].time||G.time)}`;show('endOv',true);$('fear').style.opacity=0;endScreenButtons();},1200);
     }})(t0);
@@ -1676,7 +1762,7 @@ function localUpdate(dt,frozen){
   // HUD
   $('stBar').style.width=p.stam+'%';$('timer').textContent=tc(G.time);
   if(G.exit){const ex=$('exitDir'),a=Math.atan2(G.exit.y-p.y,G.exit.x-p.x),r=view==='top'?a+Math.PI/2:a-p.a;
-    ex.hidden=false;ex.firstChild.style.transform=`rotate(${r}rad)`;ex.lastChild.textContent=`EXIT ${Math.round(Math.hypot(G.exit.x-p.x,G.exit.y-p.y))}m`;}
+    ex.hidden=false;ex.firstChild.style.visibility=G.stage===7?'hidden':'';ex.firstChild.style.transform=`rotate(${r}rad)`;ex.lastChild.textContent=`EXIT ${Math.round(Math.hypot(G.exit.x-p.x,G.exit.y-p.y))}m`;}
   if(msgT>0){msgT-=dt;if(msgT<=0)$('msg').classList.remove('show');}
 }
 // fuses are counted for the whole team by the host
@@ -1790,6 +1876,7 @@ function render3D(){
       if(STAGE===2){const cy=Math.floor(fy),tk=floor?(cy===TY?RAIL:cy===TY-1||cy===TY+1?BALLAST:CONC):((Math.floor(fx)%5===0&&cy===TY)?LAMP:CEIL2);c=tk.px[ti];
         if(tk===LAMP&&tk.em[ti]){shade(i,c,.55+.45*fogf(rd),0,0);continue;}}
       else if(STAGE===4)c=(floor?FLOOR4:CEIL4).px[ti];
+      else if(STAGE===7)c=(floor?FLOOR7:CEIL5).px[ti];
       else if(STAGE===5||STAGE===6){const cy=Math.floor(fy),lampY=STAGE===5?HY:-1,tk=floor?(STAGE===5?FLOOR5:FLOOR6):((STAGE===5?(Math.floor(fx)%6===0&&cy===lampY):((Math.floor(fx)&1)&&(cy&1)))?LAMP:STAGE===5?CEIL5:CEIL);c=tk.px[ti];
         if(tk===LAMP&&tk.em[ti]){shade(i,c,.55+.45*fogf(rd),0,0);continue;}}
       else if(floor){c=FLOOR.px[ti];
@@ -1827,6 +1914,7 @@ function render3D(){
     else if(it.t==='cpn')sp.push({x:it.x,y:it.y,w:.36,h0:.25+Math.sin(t*2+it.x)*.03,h1:.55+Math.sin(t*2+it.x)*.03,tex:COUPON,glow:.3});
     else sp.push({x:it.x,y:it.y,w:.3,h0:0,h1:.22,tex:NOTE,glow:G.stage===6?.3:.1});}
   for(const sh of G.shriekers||[])sp.push({x:sh.x,y:sh.y,w:.75,h0:0,h1:.6,tex:SHRIEK,glow:.04+sh.pulse*.2});
+  for(const f of G.fakes||[])if(G.stage===7)sp.push({x:f.x,y:f.y,w:.5,h0:0,h1:.88,tex:f.state==='reveal'?HAZ_FAKE:HAZ_FRONT[f.slot],glow:0,who:{name:(G.ps[f.slot]||{name:'あなた'}).name,slot:f.slot,mirror:true}});
   for(const m of G.mobs||[]){const jit=m.state==='wind'?(Math.random()-.5)*.08:0;sp.push({x:m.x+jit,y:m.y,w:.55,h0:0,h1:1.05,tex:mobTex(m,p.x,p.y),glow:0});}
   if(gh.wait<=0){const gb=Math.sin(t*2.2)*.04;if(STAGE===4)sp.push({x:gh.x,y:gh.y,w:.85,h0:0,h1:1.05,tex:ROOMKER,glow:0,ghost:true});else if(STAGE===5)sp.push({x:gh.x,y:gh.y,w:.6,h0:0,h1:1.1,tex:SCP173,glow:.05});else if(STAGE<4)sp.push({x:gh.x,y:gh.y,w:.9,h0:.06+gb,h1:.96+gb,tex:grinTex(t,gh.chaseT>=2),glow:.6,ghost:true});}
   for(const sg of trainSegs())sp.push({x:sg.x,y:TY+.5,w:2.9,h0:0,h1:1,tex:sg.head?TRAIN_FRONT:TRAIN_BODY,glow:.35});
@@ -1838,7 +1926,7 @@ function render3D(){
     const dx=s.x-p.x,dy=s.y-p.y,tX=inv*(dirY*dx-dirX*dy),tY=inv*(-plY*dx+plX*dy);if(tY<.12)continue;
     const scx=(W/2)*(1+tX/tY),pw=s.w*S/tY,yt=hz+(.5-s.h1)*S/tY,yb=hz+(.5-s.h0)*S/tY,ph=yb-yt;
     const xs=scx-pw/2,x0=Math.max(0,Math.ceil(xs)),x1=Math.min(W,scx+pw/2),y0=Math.max(0,Math.ceil(yt)),y1=Math.min(H,yb);
-    if(s.who&&scx>=0&&scx<W&&tY<zbuf[scx|0]&&tY<14)tags.push({name:s.who.name,slot:s.who.slot,x:scx,y:yt-2});
+    if(s.who&&scx>=0&&scx<W&&tY<zbuf[scx|0]&&tY<14)tags.push({name:s.who.name,slot:s.who.slot,mirror:s.who.mirror,x:scx,y:yt-2});
     const E=Math.max(lmAt(s.x,s.y)*fogf(tY)*ENV+BASE,s.glow),jit=s.ghost&&G.fear>.4?(Math.random()<.25?rnd(3)-1:0):0;
     for(let x=x0;x<x1;x++){if(tY>=zbuf[x])continue;const u=clamp(((x-xs)/pw*TEX|0)+jit,0,TM);
       for(let y=y0;y<y1;y++){const ti=((y-yt)/ph*TEX|0)*TEX+u,c=s.tex.px[ti];if(!c)continue;const i=y*W+x;
@@ -1881,11 +1969,11 @@ function hazFront(col){return mkTex(g=>{   // first-person billboard
   g.fillStyle='#1d2a33';g.fillRect(26,6,12,6);g.fillStyle='rgba(180,220,255,.35)';g.fillRect(27,7,4,2);
   ell(32,16,4,3.5,'#111');ell(27,17,2.5,2.5,'#777');ell(37,17,2.5,2.5,'#777');
 });}
-const HAZ_TOP=SUIT.map(hazTop),HAZ_FRONT=SUIT.map(hazFront);
+const HAZ_TOP=SUIT.map(hazTop),HAZ_FRONT=SUIT.map(hazFront),HAZ_TOP_FAKE=hazTop('#c9a51a');
 // name tags over the other players (canvas pixel coords -> page coords)
 function placeLabels(list){const box=$('names');while(box.children.length<list.length)box.appendChild(document.createElement('span'));
   const sc=Math.max(innerWidth/W,innerHeight/H),ox=(innerWidth-W*sc)/2,oy=(innerHeight-H*sc)/2;
-  [...box.children].forEach((el,i)=>{const l=list[i];if(!l){el.hidden=true;return;}el.hidden=false;el.textContent=(speaking(l.slot)?'🔊':'')+l.name;el.style.color=SUIT[l.slot];el.style.left=(ox+l.x*sc)+'px';el.style.top=(oy+l.y*sc)+'px';});}
+  [...box.children].forEach((el,i)=>{const l=list[i];if(!l){el.hidden=true;return;}el.hidden=false;el.textContent=(speaking(l.slot)?'🔊':'')+l.name;el.style.color=SUIT[l.slot];el.style.transform=l.mirror?'translate(-50%,-100%) scaleX(-1)':'';el.style.left=(ox+l.x*sc)+'px';el.style.top=(oy+l.y*sc)+'px';});}
 function castVis(px,py){
   for(let k=0;k<VR;k++){
     const a=k/VR*Math.PI*2-Math.PI,rx=Math.cos(a),ry=Math.sin(a);
@@ -1948,7 +2036,7 @@ function renderTop(){
         if(lv&&ft.em[fi]){buf[i]=ft.px[fi];continue;}
         shade(i,ft.px[fi],(lv?lit:dim)*.9,0,NOISE[(i+noff)&65535]*grain);continue;
       }
-      const tex=wall?(v===3||v===5?T[v]:v===8?WTOP2:v===9?WTOP4:v===12?WTOP6:WTOP):STAGE===4?FLOOR4:STAGE===2?(cy===TY?RAIL:cy===TY-1||cy===TY+1?BALLAST:CONC):FLOOR,lv=visD[i*4+(wall?0:1)]>127;
+      const tex=wall?(v===3||v===5?T[v]:v===8?WTOP2:v===9?WTOP4:v===12?WTOP6:v===13?WTOP7:WTOP):STAGE===7?FLOOR7:STAGE===4?FLOOR4:STAGE===2?(cy===TY?RAIL:cy===TY-1||cy===TY+1?BALLAST:CONC):FLOOR,lv=visD[i*4+(wall?0:1)]>127;
       if(lv&&tex.em[ti]){buf[i]=tex.px[ti];continue;}
       shade(i,tex.px[ti],(lv?lit:dim)*(wall?.42:1),0,NOISE[(i+noff)&65535]*grain);
     }}
@@ -1960,6 +2048,8 @@ function renderTop(){
     else{o.glow=.1;drawTop(it.x,it.y,.5,NOTE,.3,o);}}
   for(const sh of G.shriekers||[]){o.glow=.04+sh.pulse*.25;drawTop(sh.x,sh.y,.85,SHRIEK,0,o);}
   const tags=[];
+  if(G.stage===7)for(const f of G.fakes||[]){drawTop(f.x,f.y,1.25,f.state==='reveal'?HAZ_TOP_FAKE:HAZ_TOP[f.slot],f.a,{noff,grain,glow:0});
+    lightAt(f.x,f.y,.05);if(LV)tags.push({name:(G.ps[f.slot]||{name:'あなた'}).name,slot:f.slot,mirror:true,x:W/2+(f.x-cam.x)*Z,y:H/2+(f.y-cam.y)*Z-12*QS()});}
   for(const q of G.ps)if(q&&q.slot!==G.me&&q.status==='alive'){drawTop(q.dx,q.dy,1.25,HAZ_TOP[q.slot],q.a,{noff,grain,glow:0});
     lightAt(q.dx,q.dy,.05);if(LV)tags.push({name:q.name,slot:q.slot,x:W/2+(q.dx-cam.x)*Z,y:H/2+(q.dy-cam.y)*Z-12*QS()});}
   if(G.ps[G.me].status==='alive')drawTop(p.x,p.y,1.25,HAZ_TOP[G.me],p.a,{noff,grain,glow:0,always:true});
@@ -1981,7 +2071,7 @@ function loop(now){
     const on=isOnline(),live=state==='play'||(on&&(state==='pause'||state==='note'||state==='end'));
     if(live)localUpdate(dt,state!=='play');
     // offline the world stops while paused; online it keeps going for everyone
-    if(!isClient()&&!G.over&&(state==='play'||on)){if(G.stage===2)updateTrain(dt);else if(G.stage===1)updateGhost(dt);else if(G.stage===4)updateRoomker(dt);else if(G.stage===5)update173(dt);else if(G.stage===6)updateMobs(dt);}
+    if(!isClient()&&!G.over&&(state==='play'||on)){if(G.stage===2)updateTrain(dt);else if(G.stage===1)updateGhost(dt);else if(G.stage===4)updateRoomker(dt);else if(G.stage===5)update173(dt);else if(G.stage===6)updateMobs(dt);else if(G.stage===7)updateFakes(dt);}
     if(on)netTick(dt);
     voiceTick();
     if(state==='play'||state==='note'||(on&&state==='pause'))render();
