@@ -1236,7 +1236,7 @@ const isFakeMon=f=>f.state==='monster'||f.state==='shed'||f.state==='prowl';
 /* ---------- stage 8: 送電塔 (an underground car park with a failing power line) ---------- */
 // The lights fail every so often: they flicker first, then everything goes black and 128 shadows come out.
 // Shadows only exist in the dark and can't enter light; the lit holes along the walls (and a few booths) are safe.
-const GW=44,GH=34;let GX0=0,GY0=0,GMAP=null,LAMP8=null,HOLES8=[];
+const GW=88,GH=34;let GX0=0,GY0=0,GMAP=null,LAMP8=null,HOLES8=[];
 T[15]=mkTex(g=>{g.fillStyle='#8a8780';g.fillRect(0,0,64,64);g.fillStyle='#e0b51c';g.fillRect(0,48,64,16);g.fillStyle='#1a1a1a';for(let x=-16;x<64;x+=12){g.beginPath();g.moveTo(x,48);g.lineTo(x+6,48);g.lineTo(x+22,64);g.lineTo(x+16,64);g.closePath();g.fill();}
   g.fillStyle='#2b4a8a';g.font='bold 14px sans-serif';g.textAlign='center';g.fillText('B2',32,30);grit(g,14);});
 function carTex(col){return mkTex(g=>{g.fillStyle='#2a2b2e';g.fillRect(0,0,64,64);g.fillStyle=col;g.fillRect(2,22,60,30);g.fillRect(12,12,40,14);
@@ -1269,7 +1269,7 @@ function layoutStage8(){
   const hole=(x,y,lx,ly)=>{set(x,y,0);HOLES8.push({x:x+.5,y:y+.5,lx,ly});};
   for(let x=7;x<GW-4;x+=8){hole(x,0,x+.5,.3);hole(x+3,GH-1,x+3.5,GH-1+.7);}
   for(let y=6;y<GH-4;y+=8){hole(0,y,.3,y+.5);hole(GW-1,y+3,GW-1+.7,y+3.5);}
-  for(const[bx,by]of[[11,9],[29,9],[20,17],[11,25],[29,25]]){set(bx,by,15);set(bx+1,by,15);set(bx,by+1,0);set(bx+1,by+1,0);HOLES8.push({x:bx+1,y:by+1.5,lx:bx+1,ly:by+1.2});}
+  for(const[bx,by]of[[11,9],[29,9],[20,17],[11,25],[29,25],[47,9],[65,9],[56,17],[47,25],[65,25],[74,17]]){set(bx,by,15);set(bx+1,by,15);set(bx,by+1,0);set(bx+1,by+1,0);HOLES8.push({x:bx+1,y:by+1.5,lx:bx+1,ly:by+1.2});}
   // exit in the far corner
   set(GW-1,GH-3,5);set(GW-2,GH-3,0);set(GW-3,GH-3,0);G.exitPos={x:GX0+GW-1,y:GY0+GH-3};G.exit={x:GX0+GW-.5,y:GY0+GH-2.5};
   for(const h of HOLES8)for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){const d=Math.hypot(x+.5-h.x,y+.5-h.y);if(d<2.6)L[y*GW+x]=Math.max(L[y*GW+x],1-d/2.6);}
@@ -1293,7 +1293,7 @@ function startStage8(){
   STAGE=8;LMV=1;FIN=false;layoutStage8();
   G.stage=8;G.over=false;G.toStage2=false;G.results=null;G.enraged=false;G.train=null;G.s3=null;G.s5=null;G.arrows=[];G.shriekers=[];G.mobs=[];G.fakes=[];G.suits=[];G.fixed=[];
   G.taken=new Set();G.ltaken=new Set(['start']);
-  G.lights={phase:'on',t:0,dur:10,blink:false};G.lSeen='on';
+  G.lights={phase:'on',t:0,dur:8+Math.random()*4,blink:false};G.lSeen='on';
   for(const q of G.ps)if(q){q.status='alive';q.x=q.dx=GX0+2+(q.slot&3)*.7;q.y=q.dy=GY0+2+(q.slot>>2)*.7;q.time=0;}
   const me=G.ps[G.me];Object.assign(G.p,{x:me.x,y:me.y,a:Math.atan2(GH,GW),pitch:0,stam:100,exh:false,bob:0});
   Object.assign(G.g,{wait:1e9,state:'wander',tslot:-1});
@@ -1310,7 +1310,7 @@ function updatePower(dt){
   const L=G.lights;L.t+=dt;
   if(L.phase==='on'&&L.t>=L.dur){L.phase='flicker';L.t=0;L.dur=2.5;}
   else if(L.phase==='flicker'){L.blink=Math.random()<.45;if(L.t>=L.dur){L.phase='off';L.t=0;L.dur=9;L.blink=false;}}
-  else if(L.phase==='off'&&L.t>=L.dur){L.phase='on';L.t=0;L.dur=14+Math.random()*6;}
+  else if(L.phase==='off'&&L.t>=L.dur){L.phase='on';L.t=0;L.dur=8+Math.random()*4;}
   updateShadows(dt);
 }
 function updateShadows(dt){
@@ -1998,12 +1998,14 @@ function shade(i,c,E,L,n){
   let r=(c&255)*(E+L)+n,g=((c>>8)&255)*(E*.95+L*.9)+n,b=((c>>16)&255)*(E*.74+L*.72)+n;
   buf[i]=0xff000000|(b>255?255:b<0?0:b|0)<<16|(g>255?255:g<0?0:g|0)<<8|(r>255?255:r<0?0:r|0);
 }
-const ENV=1.12,BASE=.05;
+const ENV=1.12;let BASE=.05;
+// the faint base glow is switched off where the dark is the point (stage 4, and stage 8 during a blackout)
+const setBase=()=>{BASE=STAGE===4||(STAGE===8&&room8()<.5)?.003:.05;};
 
 /* ---------- first-person render ---------- */
 function arrowGrid(ox,oy,w){const g=new Uint8Array(w*w);G.arrows.forEach((a,i)=>{const x=Math.floor(a.x)-ox,y=Math.floor(a.y)-oy;if(x>=0&&y>=0&&x<w&&y<w)g[y*w+x]=i+1;});return g;}
 const forcedFps=()=>STAGE===5||STAGE===6;
-function render(){if(STAGE===3)render2D();else if(view==='top'&&!forcedFps())renderTop();else render3D();}
+function render(){setBase();if(STAGE===3)render2D();else if(view==='top'&&!forcedFps())renderTop();else render3D();}
 function render3D(){
   const p=G.p,dirX=Math.cos(p.a),dirY=Math.sin(p.a),plX=-dirY*PLANE,plY=dirX*PLANE;
   const hz=(H>>1)+Math.round(p.pitch*H)+((p.bob*QS())|0),noff=rnd(65536),grain=4+G.fear*30;
@@ -2175,7 +2177,7 @@ function renderTop(){
   // cells on screen, looked up once per frame
   const gx0=Math.floor(cam.x-W/2/Z)-1,gy0=Math.floor(cam.y-H/2/Z)-1,gw=Math.ceil(W/Z)+4,gh2=Math.ceil(H/Z)+4,cg=new Uint8Array(gw*gh2);
   for(let y=0;y<gh2;y++)for(let x=0;x<gw;x++)cg[y*gw+x]=cellAt(gx0+x,gy0+y);
-  const lit=ENV+BASE,dim=ENV*.62+BASE;
+  const lit=ENV+BASE,dim=ENV*.62+BASE,dyn=STAGE===4||STAGE===8;
   for(let y=0;y<H;y++){const wy=cam.y+(y-H/2)/Z,cy=Math.floor(wy),tv=((wy*TEX)|0)&TM,fy=wy-cy,row=(cy-gy0)*gw-gx0;
     // the wall face is lit from the floor just in front of it
     const fsy=Math.min(H-1,Math.max(0,Math.round(H/2+(cy+1.02-cam.y)*Z)))*W;
@@ -2184,11 +2186,11 @@ function renderTop(){
       if(wall&&fy>.42&&open(cg[row+gw+cx])){
         const ft=T[v]||T[1],fi=(((fy-.42)/.58*TEX)|0)*TEX+(((wx*TEX)|0)&TM),lv=visD[(fsy+x)*4+1]>127;
         if(lv&&ft.em[fi]){buf[i]=ft.px[fi];continue;}
-        shade(i,ft.px[fi],(lv?lit:dim)*.9,0,NOISE[(i+noff)&65535]*grain);continue;
+        const fl=dyn?lmAt(wx,cy+1.02)*ENV*(lv?1:.62)+BASE:(lv?lit:dim);shade(i,ft.px[fi],fl*.9,0,NOISE[(i+noff)&65535]*grain);continue;
       }
       const tex=wall?(v===3||v===5?T[v]:v===8?WTOP2:v===9?WTOP4:v===12?WTOP6:v===13?WTOP7:STAGE===8?WTOP2:WTOP):STAGE===8?FLOOR8:STAGE===7?FLOOR7:STAGE===4?FLOOR4:STAGE===2?(cy===TY?RAIL:cy===TY-1||cy===TY+1?BALLAST:CONC):FLOOR,lv=visD[i*4+(wall?0:1)]>127;
       if(lv&&tex.em[ti]){buf[i]=tex.px[ti];continue;}
-      shade(i,tex.px[ti],(lv?lit:dim)*(wall?.42:1),0,NOISE[(i+noff)&65535]*grain);
+      const ll=dyn?lmAt(wx,wy)*ENV*(lv?1:.62)+BASE:(lv?lit:dim);shade(i,tex.px[ti],ll*(wall?.42:1),0,NOISE[(i+noff)&65535]*grain);
     }}
   const t=performance.now()/1000,o={noff,grain,glow:0};
   for(const ar of G.arrows)if(Math.abs(ar.x-cam.x)<W/Z&&Math.abs(ar.y-cam.y)<H/Z)drawTop(ar.x,ar.y,.9,ARROW,ar.a,o);
