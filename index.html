@@ -15,6 +15,9 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--
 #view{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;image-rendering:auto;display:block;touch-action:none;filter:saturate(1.08) contrast(1.05)}
 #vig{position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,transparent 50%,rgba(10,8,0,.45) 100%)}
 #fear{position:fixed;inset:0;pointer-events:none;opacity:0;background:radial-gradient(ellipse at center,transparent 25%,rgba(40,0,0,.85) 100%);mix-blend-mode:multiply}
+#tint{position:fixed;inset:0;pointer-events:none;mix-blend-mode:multiply;transition:background .2s}
+#tint.red{background:rgba(255,30,30,.8)}
+#tint.green{background:rgba(70,255,100,.6)}
 #scan{position:fixed;inset:0;pointer-events:none;opacity:.08;background:repeating-linear-gradient(0deg,rgba(0,0,0,.55) 0 1px,transparent 1px 3px)}
 body.shake #view{animation:shake .12s linear infinite}
 @keyframes shake{0%{transform:translate(2px,-1px)}50%{transform:translate(-2px,2px)}100%{transform:translate(1px,1px)}}
@@ -139,6 +142,7 @@ h1{font-family:var(--vhs);font-weight:400;font-size:clamp(56px,14vw,104px);margi
 <div id="scan"></div>
 <div id="vig"></div>
 <div id="fear"></div>
+<div id="tint"></div>
 
 <div id="hud" hidden>
   <i class="corner c1"></i><i class="corner c2"></i><i class="corner c3"></i><i class="corner c4"></i>
@@ -183,6 +187,7 @@ h1{font-family:var(--vhs);font-weight:400;font-size:clamp(56px,14vw,104px);margi
       <button data-st="6" aria-pressed="false">6</button>
       <button data-st="7" aria-pressed="false">7</button>
       <button data-st="8" aria-pressed="false">8</button>
+      <button data-st="9" aria-pressed="false">9</button>
     </div>
     <div class="diff" role="group" aria-label="視点">
       <button data-v="top" aria-pressed="true">見下ろし</button>
@@ -432,7 +437,7 @@ function chunk(rx,ry){const k=rx*8192+ry;let c=CH.get(k);
 const FR=3,FX0=(R0-FR)*P,FX1=(R0+FR+1)*P;let FIN=false;
 const inMap=(x,y)=>!FIN||(x>FX0&&x<FX1&&y>FX0&&y<FX1);
 const WALLV=()=>STAGE===4?9:STAGE===6?12:STAGE===7?13:1;
-function cellAt(x,y){x=Math.floor(x);y=Math.floor(y);if(STAGE===8)return garageCell(x,y);if(STAGE===2)return tunnelCell(x,y);if(STAGE===5)return hallCell(x,y);if(FIN&&(x<=FX0||x>=FX1||y<=FX0||y>=FX1))return WALLV();
+function cellAt(x,y){x=Math.floor(x);y=Math.floor(y);if(STAGE===9)return hall9(x,y);if(STAGE===8)return garageCell(x,y);if(STAGE===2)return tunnelCell(x,y);if(STAGE===5)return hallCell(x,y);if(FIN&&(x<=FX0||x>=FX1||y<=FX0||y>=FX1))return WALLV();
   const rx=Math.floor(x/P),ry=Math.floor(y/P),v=chunk(rx,ry)[(y-ry*P)*P+(x-rx*P)];return v===1?WALLV():v;}
 function setCell(x,y,v){const rx=Math.floor(x/P),ry=Math.floor(y/P);chunk(rx,ry)[(y-ry*P)*P+(x-rx*P)]=v;}
 const open=v=>v===0||v===5;
@@ -561,7 +566,7 @@ function trainFeedback(dt){
   else{AU.set(AU.trG,0);AU.set(AU.scG,0);}
 }
 function showBanner(t){const s=$('spotted');s.textContent=t;s.classList.remove('on');void s.offsetWidth;s.classList.add('on');}
-function startStage(n){if(n===8)startStage8();else if(n===7)startStage7();else if(n===6)startStage6();else if(n===5)startStage5();else if(n===4)startStage4();else if(n===3)startStage3();else startStage2();writeSave();refreshLoad();}
+function startStage(n){if(n===9)startStage9();else if(n===8)startStage8();else if(n===7)startStage7();else if(n===6)startStage6();else if(n===5)startStage5();else if(n===4)startStage4();else if(n===3)startStage3();else startStage2();writeSave();refreshLoad();}
 function startStage2(){
   if(!G)return;
   clearPoke();show('scare',false);document.body.classList.remove('shake');show('endOv',false);show('pauseOv',false);show('noteOv',false);
@@ -1340,6 +1345,81 @@ function stage8Feedback(dt){
   AU.set(AU.bz,L.phase==='on'?.05:L.phase==='flicker'?(L.blink?0:.05):0);
 }
 
+/* ---------- stage 9: the doll ---------- */
+// A wide hall; the goal is the wall 70 m ahead. A giant doll faces that wall and sings
+// 「ここはー こーちー ぴあさにあー」 (heard, never shown). When the song ends the room turns red for 3 s and
+// anyone who moves is shot. Then the room flashes green and she turns back to sing again.
+const D9W=16,D9L=70;let D9X0=0,D9Y0=0;
+T[19]=mkTex(g=>{const gr=g.createLinearGradient(0,0,0,64);gr.addColorStop(0,'#8fc7e8');gr.addColorStop(.7,'#cfe7f2');gr.addColorStop(1,'#d9cfb2');g.fillStyle=gr;g.fillRect(0,0,64,64);
+  g.fillStyle='rgba(255,255,255,.85)';for(const[x,y,r]of[[14,14,7],[22,12,8],[30,15,6],[46,24,6],[52,22,7]]){g.beginPath();g.arc(x,y,r,0,7);g.fill();}
+  g.fillStyle='#b9a77d';g.fillRect(0,56,64,8);grit(g,8);});
+T[20]=mkTex(g=>{g.fillStyle='#e6dcc0';g.fillRect(0,0,64,64);g.fillStyle='#c94a3c';g.fillRect(0,26,64,12);g.fillStyle='#fff';g.font='bold 9px sans-serif';g.textAlign='center';g.save();g.scale(-1,1);g.fillText('GOAL',-32,35);g.restore();grit(g,10);});   // the side facing the start is drawn mirrored, so write it backwards
+const FLOOR9=mkTex(g=>{g.fillStyle='#d8c9a0';g.fillRect(0,0,64,64);for(let i=0;i<500;i++){const v=180+rnd(50);g.fillStyle=`rgb(${v},${v-14},${v-50})`;g.fillRect(rnd(64),rnd(64),1,1);}grit(g,12);});
+const CEIL9=mkTex(g=>{g.fillStyle='#e9e4d6';g.fillRect(0,0,64,64);g.fillStyle='#cfc8b6';for(let i=0;i<64;i+=16)g.fillRect(i,0,1,64);grit(g,6);});
+function dollPic(g,front){
+  g.fillStyle='#b8322a';g.beginPath();g.moveTo(22,26);g.lineTo(42,26);g.lineTo(50,58);g.lineTo(14,58);g.closePath();g.fill();
+  g.fillStyle='#f3e3c8';g.fillRect(20,26,24,8);g.fillRect(14,28,5,20);g.fillRect(45,28,5,20);g.fillRect(24,58,5,6);g.fillRect(35,58,5,6);
+  g.fillStyle='#1a1a1a';g.fillRect(23,62,7,2);g.fillRect(34,62,7,2);
+  g.fillStyle='#111';g.beginPath();g.ellipse(32,14,13,13,0,0,7);g.fill();
+  if(front){g.fillStyle='#f6ead6';g.beginPath();g.ellipse(32,16,10,11,0,0,7);g.fill();g.fillStyle='#111';g.fillRect(21,4,22,7);
+    g.fillStyle='#111';g.beginPath();g.arc(27,16,2.4,0,7);g.arc(37,16,2.4,0,7);g.fill();g.fillStyle='#ff2a2a';g.fillRect(26,15,1,1);g.fillRect(36,15,1,1);
+    g.fillStyle='#e9a3a3';g.fillRect(24,19,3,2);g.fillRect(37,19,3,2);g.fillStyle='#8a1d1d';g.fillRect(30,22,4,1);}
+  else{g.fillStyle='#1d1d1d';for(let i=0;i<8;i++)g.fillRect(21+i*3,6,1,20);g.fillStyle='#b8322a';g.fillRect(28,3,8,3);}
+}
+const DOLL_F=mkTex(g=>dollPic(g,true),(r,gg,b)=>r>250&&gg<60&&b<60),DOLL_B=mkTex(g=>dollPic(g,false));
+function hall9(x,y){x-=D9X0;y-=D9Y0;if(x<0||y<0||y>=D9W)return 19;if(x===D9L+1)return 5;if(x>D9L+1)return 20;return 0;}
+function startStage9(){
+  if(!G)return;
+  clearPoke();show('scare',false);document.body.classList.remove('shake');show('endOv',false);show('pauseOv',false);show('noteOv',false);hideS3UI();
+  $('msg').classList.remove('show');msgT=0;
+  STAGE=9;LMV=.95;FIN=false;D9X0=Math.floor(START)-2;D9Y0=Math.floor(START)-Math.floor(D9W/2);
+  G.stage=9;G.over=false;G.toStage2=false;G.results=null;G.enraged=false;G.train=null;G.s3=null;G.s5=null;G.arrows=[];G.shriekers=[];G.mobs=[];G.fakes=[];G.suits=[];G.shadows=[];G.lights=null;G.fixed=[];
+  G.taken=new Set();G.ltaken=new Set(['start']);
+  G.exit={x:D9X0+D9L+1.5,y:D9Y0+D9W/2};G.exitPos={x:D9X0+D9L+1,y:Math.floor(G.exit.y)};
+  G.doll={x:D9X0+D9L-.6,y:D9Y0+D9W/2};
+  G.rl={phase:'green',t:0,dur:4,watch:null};G.rlSeen='';
+  for(const q of G.ps)if(q){q.status='alive';q.x=q.dx=D9X0+1.5;q.y=q.dy=D9Y0+D9W/2+((q.slot&7)-3.5)*1.1;q.time=0;}
+  const me=G.ps[G.me];Object.assign(G.p,{x:me.x,y:me.y,a:0,pitch:0,stam:100,exh:false,bob:0});
+  Object.assign(G.g,{wait:1e9,state:'wander',tslot:-1});
+  try{view=localStorage.getItem('noclip_view')||'top';}catch(e){}
+  $('slots').parentNode.hidden=true;
+  $('stamp').innerHTML=(isOnline()?`ONLINE ${G.ps.filter(Boolean).length}P`:'SP')+'　STAGE 9<br>OCT.11 1996';
+  state='play';show('hud',true);setTouchUI(true);
+  const c=$('stageCard');c.innerHTML='<b>STAGE 9</b><span>― 人形 ―</span>';c.classList.remove('on');void c.offsetWidth;c.classList.add('on');
+  msg('70m先の壁まで行け。歌が終わったら、ぴたりと止まれ。',6);
+  lockPtr();
+}
+// host / single player: green (she sings, 2.5-5.5 s) -> red (3 s, moving is death) -> a green flash -> again
+function updateDoll(dt){
+  const R=G.rl;R.t+=dt;
+  if(R.phase==='green'&&R.t>=R.dur){R.phase='red';R.t=0;R.dur=3;R.watch=null;}
+  else if(R.phase==='red'){
+    // a moment to react, then she remembers where everybody stands
+    if(!R.watch&&R.t>=.3){R.watch={};for(const q of alivePs())R.watch[q.slot]=[q.x,q.y];}
+    if(R.watch)for(const q of alivePs()){const w=R.watch[q.slot];if(!w){R.watch[q.slot]=[q.x,q.y];continue;}
+      if(Math.hypot(q.x-w[0],q.y-w[1])>.12){const ev={t:'shot',slot:q.slot};if(isHost())bc(ev);applyShot(ev);playerDone(q.slot,'caught');}}
+    if(R.t>=R.dur){R.phase='back';R.t=0;R.dur=.9;}}
+  else if(R.phase==='back'&&R.t>=R.dur){R.phase='green';R.t=0;R.dur=2.5+Math.random()*3;}
+}
+function applyShot(ev){AU.noise(.12,3500,.7,.9,'highpass');AU.noise(.5,400,1,.5,'lowpass');AU.tone(160,.3,.2,'square',0,60);
+  if(ev.slot!==G.me&&G.ps[ev.slot])msg(`${G.ps[ev.slot].name}が、動いてしまった……`,3);}
+// the song: a synthesized voice where the browser has one, plus a melody timed to end exactly on red
+const SONG=[['こ',0,1],['こ',2,1],['は',4,1.6],['こ',4,1],['ち',2,1.6],['ぴ',7,.8],['あ',7,.8],['さ',4,.8],['に',2,.8],['あ',0,2.4]];
+function sing(dur){
+  const tot=SONG.reduce((a,s)=>a+s[2],0);let at=0;
+  for(const[,semi,len]of SONG){const d=len/tot*dur;AU.tone(523*Math.pow(2,semi/12),d*.9,.11,'triangle',at);AU.tone(523*Math.pow(2,semi/12)/2,d*.9,.05,'sine',at);at+=d;}
+  try{if(window.speechSynthesis){speechSynthesis.cancel();const u=new SpeechSynthesisUtterance('ここはー、こーちー、ぴあさにあー');u.lang='ja-JP';
+    u.rate=clamp(3.2/dur,.6,1.8);u.pitch=1.5;u.volume=.9;const v=speechSynthesis.getVoices().find(v=>/ja/i.test(v.lang));if(v)u.voice=v;speechSynthesis.speak(u);}}catch(e){}
+}
+function stage9Feedback(dt){
+  const R=G.rl;if(!R)return;
+  if(R.phase!==G.rlSeen){G.rlSeen=R.phase;
+    if(R.phase==='green')sing(R.dur);
+    else if(R.phase==='red'){try{window.speechSynthesis&&speechSynthesis.cancel();}catch(e){}AU.tone(90,.5,.25,'sawtooth',0,60);AU.noise(.3,200,1,.3,'lowpass');}
+    else if(R.phase==='back')AU.tone(660,.25,.12,'sine');}
+  const t=$('tint');t.className=R.phase==='red'?'red':R.phase==='back'?'green':'';
+}
+
 /* ---------- story ---------- */
 const NOTES=[
   {h:'拾った紙切れ',p:'あれは目がいい。見通しのいい部屋では、遠くから見つかる。\n壁や柱の陰を歩け。\n走れば足音で気づかれる。\n床の赤い矢印は嘘をつく。出口は、矢印の反対にある。\n\n低い唸り声が聞こえたら、近くにいる。'},
@@ -1470,6 +1550,7 @@ function clientRecv(d){
   else if(d.t==='shriek')applyShriek(d);
   else if(d.t==='eye')applyEye(d);
   else if(d.t==='fake')applyFake(d);
+  else if(d.t==='shot')applyShot(d);
   else if(d.t==='fuse')applyFuse(d);
   else if(d.t==='spot')showSpotted();
   else if(d.t==='done')applyDone(d.slot,d.st);
@@ -1496,6 +1577,7 @@ function netTick(dt){
   netAcc+=dt;if(netAcc<1/15)return;netAcc=0;
   if(isHost()){const g=G.g;
     bc({t:'s',g:[+g.x.toFixed(2),+g.y.toFixed(2),+g.a.toFixed(2),g.state==='chase'?1:0,+g.chaseT.toFixed(2),g.wait>0?1:0,g.tslot],
+      RL:G.stage===9?[G.rl.phase,+G.rl.t.toFixed(2),+G.rl.dur.toFixed(2)]:null,
       LI:G.stage===8?[G.lights.phase,+G.lights.t.toFixed(2),G.lights.blink?1:0]:null,
       SH:G.stage===8&&G.lights.phase==='off'?G.shadows.map(o=>[+o.x.toFixed(2),+o.y.toFixed(2)]):null,
       F:G.stage===7?G.fakes.map(f=>[+f.x.toFixed(2),+f.y.toFixed(2),+f.a.toFixed(2),f.state,f.moving?1:0,f.slot]):null,SU:G.stage===7?(G.suits||[]).length:0,
@@ -1506,6 +1588,7 @@ function netTick(dt){
     try{NET.conn.send({t:'p',x:+p.x.toFixed(2),y:+p.y.toFixed(2),a:+p.a.toFixed(2),r:p.run?1:0,m:p.moving?1:0});}catch(e){}}
 }
 function applySnap(d){const g=G.g,s=d.g;
+  if(G.stage===9&&d.RL&&G.rl){G.rl.phase=d.RL[0];G.rl.t=d.RL[1];G.rl.dur=d.RL[2];}
   if(G.stage===8&&d.LI&&G.lights){const L=G.lights;L.phase=d.LI[0];L.t=d.LI[1];L.blink=!!d.LI[2];for(const o of G.shadows)o.on=false;
     if(d.SH)d.SH.forEach((v,i)=>{const o=G.shadows[i];if(o){o.x=v[0];o.y=v[1];o.on=true;}});}
   if(d.F&&G.stage===7&&G.fakes)d.F.forEach((v,i)=>{const f=G.fakes[i];if(!f)return;f.x=v[0];f.y=v[1];f.a=v[2];if(v[3]==='shed'&&f.state!=='shed'&&f.state!=='monster')(G.suits=G.suits||[]).push({x:v[0],y:v[1],a:v[2]});f.state=v[3];f.moving=!!v[4];if(v[5]!=null)f.slot=v[5];});
@@ -1578,7 +1661,7 @@ const tc=t=>[t/3600,t/60%60,t%60].map(v=>String(Math.floor(v)).padStart(2,'0')).
 // save slots: an auto checkpoint plus three slots you pick; a save is the start of the stage you were on
 const SLOTS=['auto','1','2','3'],slotName=k=>k==='auto'?'オート':'データ'+k;
 const slotKey=k=>'noclip_save_'+k;
-function okSave(v){return v&&v.stage>=1&&v.stage<=8&&v.diff>=0&&v.diff<=2?v:null;}
+function okSave(v){return v&&v.stage>=1&&v.stage<=9&&v.diff>=0&&v.diff<=2?v:null;}
 function readSlot(k){try{return okSave(JSON.parse(localStorage.getItem(slotKey(k))||'null'));}catch(e){return null;}}
 try{const old=localStorage.getItem('noclip_save');if(old&&!localStorage.getItem(slotKey('1')))localStorage.setItem(slotKey('1'),old);localStorage.removeItem('noclip_save');}catch(e){}
 function curSave(){return{stage:G.stage,diff,time:Math.floor(G.time),at:Date.now()};}
@@ -1636,7 +1719,7 @@ function pause(){if(state!=='play')return;state='pause';$('saveMsg').textContent
   // the hand only comes for you once it has found you
   if(G.g.state==='chase'&&(!isOnline()||G.g.tslot===G.me))startPoke();}
 function resume(){clearPoke();state='play';show('pauseOv',false);last=performance.now();lockPtr();}
-function hideS3UI(){for(const id of['dlg','prompt','mash','mashTap','exeDist','tJump','tAct'])show(id,false);}
+function hideS3UI(){$('tint').className='';try{window.speechSynthesis&&speechSynthesis.cancel();}catch(e){}for(const id of['dlg','prompt','mash','mashTap','exeDist','tJump','tAct'])show(id,false);}
 $('mashTap').addEventListener('pointerdown',e=>{e.preventDefault();s3Action('Tap');});
 function toTitle(){hideS3UI();
   clearPoke();
@@ -1646,7 +1729,7 @@ function toTitle(){hideS3UI();
 function openNote(id){const n=typeof id==='object'?id:NOTES[id];state='note';AU.page();$('noteH').textContent=n.h;$('noteP').textContent=n.p;show('noteOv',true);if(!isOnline())AU.silence();if(document.pointerLockElement)document.exitPointerLock();}
 function closeNote(){if(state!=='note')return;show('noteOv',false);state='play';last=performance.now();lockPtr();}
 // pick where a fresh game begins (4 = right after Sonic.exe); remembered per browser
-let startStageSel=1;try{const v=+localStorage.getItem('noclip_startstage');if(v>=1&&v<=8)startStageSel=v;}catch(e){}
+let startStageSel=1;try{const v=+localStorage.getItem('noclip_startstage');if(v>=1&&v<=9)startStageSel=v;}catch(e){}
 function setStartStage(n){startStageSel=n;try{localStorage.setItem('noclip_startstage',n);}catch(e){}
   document.querySelectorAll('[data-st]').forEach(b=>{b.setAttribute('aria-pressed',+b.dataset.st===n);if(b.dataset.st==='1')b.textContent=n===1?'STAGE 1から':'1';else b.textContent=+b.dataset.st===n?`STAGE ${n}から`:b.dataset.st;});}
 document.querySelectorAll('[data-st]').forEach(b=>b.addEventListener('click',()=>setStartStage(+b.dataset.st)));setStartStage(startStageSel);
@@ -1670,7 +1753,7 @@ function playerDone(slot,st){   // host or single player only
   if(isHost())bc({t:'done',slot,st});
   applyDone(slot,st);
   // the first one out of stage 1 drags everybody (even the caught) onto the tracks
-  if(G.stage<8&&st==='escaped'&&!G.toStage2){G.toStage2=true;G.over=true;const g0=G,n=G.stage+1;
+  if(G.stage<9&&st==='escaped'&&!G.toStage2){G.toStage2=true;G.over=true;const g0=G,n=G.stage+1;
     if(isHost())bc({t:'stagesoon',name:q.name});
     setTimeout(()=>{if(G!==g0||G.stage!==n-1)return;if(isHost())bc({t:'stage',n});startStage(n);},3000);return;}
   if(G.toStage2)return;
@@ -1695,13 +1778,13 @@ function endScreenButtons(){
 function localEscape(){
   state='end';AU.silence();setTouchUI(false);if(document.pointerLockElement)document.exitPointerLock();placeLabels([]);
   $('endT').textContent='EXIT';$('endT').className='';$('fear').style.opacity=0;show('hud',false);
-  if(G.stage<8){
+  if(G.stage<9){
     $('endText').innerHTML=['','非常口を抜けた――はずだった。<br>足元に、冷たい鉄のレールが二本、闇の奥へ伸びている。','線路の果ての非常口を抜けた。<br>……世界が、平べったくなった気がする。',
-      'エレベーターは止まらずに、下へ、下へ。<br>扉が開くと、そこは真っ暗だった。','非常口の先は、コンクリートの長い廊下だった。<br>廊下の先に、何かが立っている。','扉の向こうは、白い廊下だった。<br>白い人影が、いくつも立っている。','最後の扉――のはずだった。<br>開けた先は、鏡だらけの部屋だった。','鏡の向こうは、コンクリートの地下駐車場だった。<br>遠くで、送電塔の唸る音がする。'][G.stage];
+      'エレベーターは止まらずに、下へ、下へ。<br>扉が開くと、そこは真っ暗だった。','非常口の先は、コンクリートの長い廊下だった。<br>廊下の先に、何かが立っている。','扉の向こうは、白い廊下だった。<br>白い人影が、いくつも立っている。','最後の扉――のはずだった。<br>開けた先は、鏡だらけの部屋だった。','鏡の向こうは、コンクリートの地下駐車場だった。<br>遠くで、送電塔の唸る音がする。','スロープの先は、空の絵が描かれた大きな部屋だった。<br>遠くの壁の前に、大きな人形が立っている。'][G.stage];
     $('endStat').textContent=(isOnline()?'全員で ':'')+`STAGE ${G.stage+1} へ……`;
     show('endOv',true);$('retryBtn').hidden=true;return;}
   const best=!isOnline()&&saveBest(G.time);
-  $('endText').innerHTML='駐車場のスロープを駆け上がると、夜明けの空と送電塔が見えた。<br>電線が、ぶうんと一度だけ鳴った。<br>足元の影が、少しだけ遅れてついてくる。';
+  $('endText').innerHTML='壁に手が届いた瞬間、空の絵が本物の朝焼けになった。<br>振り返ると、人形はまだこっちを見ていた。<br>……もう、歌は聞こえない。';
   $('endStat').textContent=`${DIFF[diff].name}　脱出時間 ${fmt(G.time)}${best?'　最速記録！':''}`;
   show('endOv',true);endScreenButtons();
 }
@@ -1816,6 +1899,7 @@ function jumpscare(){
       else if(STAGE===2){g.scale(s/40,s/40);g.translate(-32,-34);trainFace(g);}
       else if(STAGE===4){g.scale(s/40,s/40);g.translate(-32,-30);roomkerPic(g);}
       else if(STAGE===5){g.scale(s/36,s/36);g.translate(-32,-16);statuePic(g);}
+      else if(STAGE===9){g.scale(s/34,s/34);g.translate(-32,-14);dollPic(g,true);}
       else if(STAGE===8){g.scale(s/30,s/30);g.translate(-32,-30);shadowPic(g);}
       else if(STAGE===7){g.scale(s/34,s/34);g.translate(-32,-12);whiteThing(g);}
       else if(STAGE===6){g.scale(s/34,s/34);g.translate(-32,-14);mobBody(g);g.fillStyle='#050505';g.beginPath();g.ellipse(29,7,2.5,3.5,0,0,7);g.ellipse(35,7,2.5,3.5,0,0,7);g.fill();g.beginPath();g.ellipse(32,15,4.5,6,0,0,7);g.fill();}else drawGrin(g,0,0,s*.26,t*16,true);g.restore();
@@ -1828,7 +1912,7 @@ function jumpscare(){
       g.fillStyle='#000';g.fillRect(0,h*.42,w,h*.16);g.fillStyle='#fff';g.font=`${Math.round(h*.08)}px DotGothic16, monospace`;g.textAlign='center';g.textBaseline='middle';g.fillText('NO SIGNAL',w/2,h/2);
       AU.tone(1000,.9,.12,'sine');
       setTimeout(()=>{if(state!=='end')return;show('scare',false);$('endT').textContent='信号途絶';$('endT').className='dead';
-        $('endText').innerHTML=STAGE===8?'暗闇の中で、目と口だけが笑った。<br>次に明かりがついたとき、そこには誰もいなかった。':STAGE===7?'白い化物は、脱ぎ捨てた服の代わりに、あなたを着た。<br>鏡の中を、あなたの姿をした何かが歩いていく。':STAGE===6?'白い腕が、肩をつかんだ。<br>最後に見たのは、真っ黒な口の奥だった。':STAGE===5?'首の後ろで、乾いた音がした。<br>まばたきをした覚えは、ない。':STAGE===4?'耳元で、湿った息の音がした。<br>あれには、最初から全部聞こえていた。':STAGE===3?'赤い目が、すぐ目の前で笑った。<br>「Good show.」':STAGE===2?'赤い車体と無数の脚が、視界を埋め尽くした。<br>レールの上に、カメラだけが転がっている。':'最後に映っていたのは、湿ったカーペットの上を<br>引きずられていく視界だった。<br>テープは、まだ回り続けている。';
+        $('endText').innerHTML=STAGE===9?'乾いた音がひとつ。<br>人形は、また壁のほうを向いて歌い始めた。':STAGE===8?'暗闇の中で、目と口だけが笑った。<br>次に明かりがついたとき、そこには誰もいなかった。':STAGE===7?'白い化物は、脱ぎ捨てた服の代わりに、あなたを着た。<br>鏡の中を、あなたの姿をした何かが歩いていく。':STAGE===6?'白い腕が、肩をつかんだ。<br>最後に見たのは、真っ黒な口の奥だった。':STAGE===5?'首の後ろで、乾いた音がした。<br>まばたきをした覚えは、ない。':STAGE===4?'耳元で、湿った息の音がした。<br>あれには、最初から全部聞こえていた。':STAGE===3?'赤い目が、すぐ目の前で笑った。<br>「Good show.」':STAGE===2?'赤い車体と無数の脚が、視界を埋め尽くした。<br>レールの上に、カメラだけが転がっている。':'最後に映っていたのは、湿ったカーペットの上を<br>引きずられていく視界だった。<br>テープは、まだ回り続けている。';
         if(isOnline()&&G.stage===1)$('endText').innerHTML+='<br>――誰かが脱出できれば、まだ終わりじゃない。';
         $('endStat').textContent=`${DIFF[diff].name}　STAGE ${G.stage}　記録時間 ${tc(G.ps[G.me].time||G.time)}`;show('endOv',true);$('fear').style.opacity=0;endScreenButtons();},1200);
     }})(t0);
@@ -1890,7 +1974,7 @@ function localUpdate(dt,frozen){
     if(G.tal>=G.need)continue;
     if(isClient()){if(!G.pend.has(it.key)){G.pend.add(it.key);try{NET.conn.send({t:'pick',key:it.key});}catch(e){}}}
     else hostPick(G.me,it.key);}
-  if(G.stage===2)trainFeedback(dt);else if(G.stage===4)stage4Feedback(dt);else if(G.stage===5)stage5Feedback(dt);else if(G.stage===8)stage8Feedback(dt);
+  if(G.stage===2)trainFeedback(dt);else if(G.stage===4)stage4Feedback(dt);else if(G.stage===5)stage5Feedback(dt);else if(G.stage===8)stage8Feedback(dt);else if(G.stage===9)stage9Feedback(dt);
   // fear & audio
   const gd=Math.hypot(gh.x-p.x,gh.y-p.y);
   const tf=clamp(1-gd/9,0,1)*(gh.state==='chase'?1:.7);G.fear+=(tf-G.fear)*Math.min(1,dt*3);
@@ -2023,6 +2107,7 @@ function render3D(){
         if(tk===LAMP&&tk.em[ti]){shade(i,c,.55+.45*fogf(rd),0,0);continue;}}
       else if(STAGE===4)c=(floor?FLOOR4:CEIL4).px[ti];
       else if(STAGE===7)c=(floor?FLOOR7:CEIL5).px[ti];
+      else if(STAGE===9)c=(floor?FLOOR9:CEIL9).px[ti];
       else if(STAGE===8){const lampC=!floor&&(Math.floor(fx)&3)===1&&(Math.floor(fy)&3)===1,tk=floor?FLOOR8:lampC?LAMP:CEIL8;c=tk.px[ti];
         if(lampC&&tk.em[ti]&&room8()>.5){shade(i,c,.55+.45*fogf(rd),0,0);continue;}}
       else if(STAGE===5||STAGE===6){const cy=Math.floor(fy),lampY=STAGE===5?HY:-1,tk=floor?(STAGE===5?FLOOR5:FLOOR6):((STAGE===5?(Math.floor(fx)%6===0&&cy===lampY):((Math.floor(fx)&1)&&(cy&1)))?LAMP:STAGE===5?CEIL5:CEIL);c=tk.px[ti];
@@ -2046,7 +2131,7 @@ function render3D(){
     const pd=Math.max(.05,side===0?sdx-ddx:sdy-ddy);zbuf[x]=pd;
     const lh=S/pd;let ds=Math.floor(hz-lh/2),de=Math.floor(hz+lh/2);
     let wx=side===0?p.y+pd*ry:p.x+pd*rx;wx-=Math.floor(wx);let tx=(wx*TEX)|0;if(side===0&&rx>0||side===1&&ry<0)tx=TEX-1-tx;
-    const T_=T[v]||T[1],tp=T_.px,te=T_.em,step=TEX/lh;
+    const T_=(STAGE===9&&v===5?T[20]:T[v])||T[1],tp=T_.px,te=T_.em,step=TEX/lh;
     const y0=ds<0?0:ds,y1=de>=H?H-1:de;let tpos=(y0-ds)*step;
     const lm=lmAt(p.x+rx*(pd-.06),p.y+ry*(pd-.06));
     const E=lm*fogf(pd)*ENV*(side?.84:1)+BASE;
@@ -2062,6 +2147,7 @@ function render3D(){
     else if(it.t==='cpn')sp.push({x:it.x,y:it.y,w:.36,h0:.25+Math.sin(t*2+it.x)*.03,h1:.55+Math.sin(t*2+it.x)*.03,tex:COUPON,glow:.3});
     else sp.push({x:it.x,y:it.y,w:.3,h0:0,h1:.22,tex:NOTE,glow:G.stage===6?.3:.1});}
   for(const sh of G.shriekers||[])sp.push({x:sh.x,y:sh.y,w:.75,h0:0,h1:.6,tex:SHRIEK,glow:.04+sh.pulse*.2});
+  if(G.stage===9&&G.doll)sp.push({x:G.doll.x,y:G.doll.y,w:1.9,h0:0,h1:2.7,tex:G.rl&&G.rl.phase==='red'?DOLL_F:DOLL_B,glow:.2});
   if(G.stage===8){for(const h of HOLES8)sp.push({x:h.lx,y:h.ly,w:.3,h0:.75,h1:1,tex:BULB,glow:1});
     for(const o of G.shadows||[])if(o.on){const b=Math.sin(t*2+o.bob)*.06;sp.push({x:o.x,y:o.y,w:.8,h0:.3+b,h1:1.1+b,tex:SHADOW,glow:0});}}
   if(G.stage===7){for(const su of G.suits||[])sp.push({x:su.x,y:su.y,w:.8,h0:0,h1:.3,tex:SUIT_DROP,glow:0});
@@ -2184,11 +2270,11 @@ function renderTop(){
     for(let x=0;x<W;x++){const wx=cam.x+(x-W/2)/Z,cx=Math.floor(wx),ti=tv*TEX+(((wx*TEX)|0)&TM),i=y*W+x;
       const v=cg[row+cx],wall=v!==0;
       if(wall&&fy>.42&&open(cg[row+gw+cx])){
-        const ft=T[v]||T[1],fi=(((fy-.42)/.58*TEX)|0)*TEX+(((wx*TEX)|0)&TM),lv=visD[(fsy+x)*4+1]>127;
+        const ft=(STAGE===9&&v===5?T[20]:T[v])||T[1],fi=(((fy-.42)/.58*TEX)|0)*TEX+(((wx*TEX)|0)&TM),lv=visD[(fsy+x)*4+1]>127;
         if(lv&&ft.em[fi]){buf[i]=ft.px[fi];continue;}
         const fl=dyn?lmAt(wx,cy+1.02)*ENV*(lv?1:.62)+BASE:(lv?lit:dim);shade(i,ft.px[fi],fl*.9,0,NOISE[(i+noff)&65535]*grain);continue;
       }
-      const tex=wall?(v===3||v===5?T[v]:v===8?WTOP2:v===9?WTOP4:v===12?WTOP6:v===13?WTOP7:STAGE===8?WTOP2:WTOP):STAGE===8?FLOOR8:STAGE===7?FLOOR7:STAGE===4?FLOOR4:STAGE===2?(cy===TY?RAIL:cy===TY-1||cy===TY+1?BALLAST:CONC):FLOOR,lv=visD[i*4+(wall?0:1)]>127;
+      const tex=wall?(STAGE===9&&v===5?T[20]:v===3||v===5?T[v]:v===8?WTOP2:v===9?WTOP4:v===12?WTOP6:v===13?WTOP7:STAGE===8?WTOP2:WTOP):STAGE===9?FLOOR9:STAGE===8?FLOOR8:STAGE===7?FLOOR7:STAGE===4?FLOOR4:STAGE===2?(cy===TY?RAIL:cy===TY-1||cy===TY+1?BALLAST:CONC):FLOOR,lv=visD[i*4+(wall?0:1)]>127;
       if(lv&&tex.em[ti]){buf[i]=tex.px[ti];continue;}
       const ll=dyn?lmAt(wx,wy)*ENV*(lv?1:.62)+BASE:(lv?lit:dim);shade(i,tex.px[ti],ll*(wall?.42:1),0,NOISE[(i+noff)&65535]*grain);
     }}
@@ -2200,6 +2286,7 @@ function renderTop(){
     else{o.glow=.1;drawTop(it.x,it.y,.5,NOTE,.3,o);}}
   for(const sh of G.shriekers||[]){o.glow=.04+sh.pulse*.25;drawTop(sh.x,sh.y,.85,SHRIEK,0,o);}
   const tags=[];
+  if(G.stage===9&&G.doll)drawTop(G.doll.x,G.doll.y,2.6,G.rl&&G.rl.phase==='red'?DOLL_F:DOLL_B,0,{noff,grain,glow:.2,always:true});
   if(G.stage===8){for(const h of HOLES8)drawTop(h.lx,h.ly,.45,BULB,0,{noff,grain,glow:1});for(const o of G.shadows||[])if(o.on)drawTop(o.x,o.y,1.1,SHADOW,0,{noff,grain,glow:0,ghost:true});}
   if(G.stage===7)for(const su of G.suits||[])drawTop(su.x,su.y,1.1,SUIT_TOP,su.a,{noff,grain,glow:0});
   if(G.stage===7)for(const f of G.fakes||[]){if(isFakeMon(f)){drawTop(f.x,f.y,1.5,WHITE_TOP,f.a,{noff,grain,glow:.15});continue;}drawTop(f.x,f.y,1.25,HAZ_TOP[f.slot],f.a,{noff,grain,glow:0});
@@ -2225,7 +2312,7 @@ function loop(now){
     const on=isOnline(),live=state==='play'||(on&&(state==='pause'||state==='note'||state==='end'));
     if(live)localUpdate(dt,state!=='play');
     // offline the world stops while paused; online it keeps going for everyone
-    if(!isClient()&&!G.over&&(state==='play'||on)){if(G.stage===2)updateTrain(dt);else if(G.stage===1)updateGhost(dt);else if(G.stage===4)updateRoomker(dt);else if(G.stage===5)update173(dt);else if(G.stage===6)updateMobs(dt);else if(G.stage===7)updateFakes(dt);else if(G.stage===8)updatePower(dt);}
+    if(!isClient()&&!G.over&&(state==='play'||on)){if(G.stage===2)updateTrain(dt);else if(G.stage===1)updateGhost(dt);else if(G.stage===4)updateRoomker(dt);else if(G.stage===5)update173(dt);else if(G.stage===6)updateMobs(dt);else if(G.stage===7)updateFakes(dt);else if(G.stage===8)updatePower(dt);else if(G.stage===9)updateDoll(dt);}
     if(on)netTick(dt);
     voiceTick();
     if(state==='play'||state==='note'||(on&&state==='pause'))render();
