@@ -274,6 +274,11 @@ h1{font-family:var(--vhs);font-weight:400;font-size:clamp(56px,14vw,104px);margi
 <canvas id="scare" hidden></canvas>
 
 <script>
+window.addEventListener('error',function(e){try{var b=document.getElementById('bootErr');if(!b){b=document.createElement('div');b.id='bootErr';
+  b.style.cssText='position:fixed;left:8px;right:8px;bottom:8px;z-index:99;background:#300;color:#fdd;border:1px solid #f55;padding:8px;font:12px/1.5 sans-serif;white-space:pre-wrap';document.body.appendChild(b);}
+  b.textContent='エラーが起きました（この文を教えてください）\n'+(e.message||'')+' '+((e.filename||'').split('/').pop())+':'+(e.lineno||'')+'\n'+navigator.userAgent;}catch(_){}});
+</script>
+<script>
 'use strict';
 const $=id=>document.getElementById(id);
 const cv=$('view'), ctx=cv.getContext('2d');
@@ -889,7 +894,7 @@ function updateRoomker(dt){
   let near=act[0],nd=1e9;for(const q of act){const d=Math.hypot(gh.x-q.x,gh.y-q.y);if(d<nd){nd=d;near=q;}}
   let tgt=null,td=1e9;
   for(const q of act){const d=Math.hypot(gh.x-q.x,gh.y-q.y);
-    const noise=(q.moving&&q.run&&d<11*D.see)||(q.moving&&d<3)||(G.time-(q.loudT??-99)<.6&&d<14*D.see);
+    const noise=(q.moving&&q.run&&d<11*D.see)||(q.moving&&d<3)||(G.time-(q.loudT!=null?q.loudT:-99)<.6&&d<14*D.see);
     const smell=d<2.5||(gh.state==='chase'&&gh.tslot===q.slot&&d<7);
     if((noise||smell)&&d<td){tgt=q;td=d;}}
   if(tgt){if(gh.state!=='chase'||gh.tslot!==tgt.slot){if(tgt.slot===G.me)showSpotted();else sendSlot(tgt.slot,{t:'spot'});}
