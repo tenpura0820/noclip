@@ -1600,7 +1600,7 @@ function startStage11(){
   $('stamp').innerHTML=(isOnline()?`ONLINE ${G.ps.filter(Boolean).length}P`:'SP')+'　STAGE 11<br>OCT.11 1996';
   state='play';show('hud',true);setTouchUI(true);
   const c=$('stageCard');c.innerHTML='<b>STAGE 11</b><span>― パーティー ―</span>';c.classList.remove('on');void c.offsetWidth;c.classList.add('on');
-  msg('パーティーへようこそ =)　……風船を割るな。笑顔の人に見つかるな。奥の生け垣の緑の扉へ。',7);
+  msg('パーティーへようこそ =)　笑顔の人はやさしい……風船を割らなければ。奥の生け垣の緑の扉へ。',7);
   lockPtr();
 }
 // partygoer movement: breadth-first toward the target cell, or straight at it when out of range
@@ -1617,11 +1617,12 @@ function updateParty(dt){
   const D=DIFF[diff],act=alivePs();if(!act.length)return;
   for(const b of G.balloons){if(b.p)continue;
     for(const o of act)if(Math.hypot(o.x-b.x,o.y-b.y)<.42){b.p=1;
-      for(const m of G.party)if(m.state!=='chase'&&Math.hypot(m.x-b.x,m.y-b.y)<24){m.state='go';m.gx=b.x;m.gy=b.y;m.goT=9;}
+      for(const m of G.party)if(Math.hypot(m.x-b.x,m.y-b.y)<24){m.angry=20;if(m.state!=='chase'){m.state='go';m.gx=b.x;m.gy=b.y;m.goT=9;}}
       break;}}
-  for(const m of G.party){m.repath-=dt;
+  for(const m of G.party){m.repath-=dt;m.angry=Math.max(0,(m.angry||0)-dt);
     let q=null,qd=1e9;
-    for(const o of act){const d=Math.hypot(o.x-m.x,o.y-m.y);if(d<qd&&(d<1.5||(d<9*D.see&&los(m.x,m.y,o.x,o.y)))){q=o;qd=d;}}
+    // they only turn on you after a balloon has gone bang near them
+    if(m.angry>0)for(const o of act){const d=Math.hypot(o.x-m.x,o.y-m.y);if(d<qd&&(d<1.5||(d<9*D.see&&los(m.x,m.y,o.x,o.y)))){q=o;qd=d;}}
     if(q){m.state='chase';m.lx=q.x;m.ly=q.y;m.lost=3;}
     else if(m.state==='chase'){m.lost-=dt;if(m.lost<=0||Math.hypot(m.lx-m.x,m.ly-m.y)<.4)m.state='walk';}
     if(m.state==='go'){m.goT-=dt;if(m.goT<=0||Math.hypot(m.gx-m.x,m.gy-m.y)<.6)m.state='walk';}
@@ -1632,7 +1633,7 @@ function updateParty(dt){
         for(let k=0;k<12;k++){const x=Math.floor(m.x)+rnd(13)-6,y=Math.floor(m.y)+rnd(13)-6;if(cellAt(x,y)===0){m.tgt=[x+.5,y+.5];break;}}
         if(!m.tgt)m.tgt=[m.x,m.y];m.wT=6;}
       goP11(m,m.tgt[0],m.tgt[1],1.1*D.spd*dt);}
-    for(const o of act)if(o.status==='alive'&&Math.hypot(o.x-m.x,o.y-m.y)<.55)playerDone(o.slot,'caught');
+    if(m.angry>0)for(const o of act)if(o.status==='alive'&&Math.hypot(o.x-m.x,o.y-m.y)<.55)playerDone(o.slot,'caught');
   }
 }
 // everyone: bangs, laughter, the tinny party tune
