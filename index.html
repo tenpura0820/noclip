@@ -1070,9 +1070,17 @@ function layoutStage6(){
   setCell(ex.x,ex.y,5);G.exitPos=ex;G.exit={x:ex.x+.5,y:ex.y+.5};
   const rooms=[];for(let ry=R0-FR;ry<=R0+FR;ry++)for(let rx=R0-FR;rx<=R0+FR;rx++)if(Math.abs(rx-R0)+Math.abs(ry-R0)>=2)rooms.push([rx,ry]);
   for(let i=rooms.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[rooms[i],rooms[j]]=[rooms[j],rooms[i]];}
-  const mobs=[],lets=[];
+  const mobs=[],lets=[],mob=(x,y)=>mobs.push({i:mobs.length,x,y,hx:x,hy:y,a:r()*Math.PI*2,ta:0,turnT:1+r()*4,state:'idle',t:0,tslot:-1,field:null,repath:0});
+  // eight of them stand on the shortest way to the exit
+  {const W=FX1-FX0+1,id=(x,y)=>(y-FX0)*W+(x-FX0),prev=new Int32Array(W*W).fill(-1),sx=Math.floor(START),sy=Math.floor(START),q=[id(sx,sy)];prev[q[0]]=q[0];let goal=-1;
+    for(let h=0;h<q.length&&goal<0;h++){const c=q[h],x=FX0+c%W,y=FX0+((c/W)|0);
+      for(const[ax,ay]of[[1,0],[-1,0],[0,1],[0,-1]]){const nx=x+ax,ny=y+ay;if(nx===ex.x&&ny===ex.y){goal=c;break;}if(!inMap(nx,ny)||cellAt(nx,ny)!==0)continue;const n=id(nx,ny);if(prev[n]<0){prev[n]=c;q.push(n);}}}
+    const path=[];for(let c=goal;c>=0&&prev[c]!==c;c=prev[c])path.unshift(c);
+    const usable=path.filter(c=>Math.hypot(FX0+c%W-sx,FX0+((c/W)|0)-sy)>5);
+    for(let k=0;k<8&&usable.length;k++){const c=usable[Math.floor((k+.5)*usable.length/8)];mob(FX0+c%W+.5,FX0+((c/W)|0)+.5);}}
+  // the rest wander the rooms; letters fill the others
   rooms.forEach(([rx,ry],k)=>{const x=rx*P+1.5+Math.floor(r()*5),y=ry*P+1.5+Math.floor(r()*5);
-    if(mobs.length<9&&k%2===0)mobs.push({i:mobs.length,x,y,hx:x,hy:y,a:r()*Math.PI*2,ta:0,turnT:1+r()*4,state:'idle',t:0,tslot:-1,field:null,repath:0});
+    if(mobs.length<20&&k%3!==2)mob(x,y);
     else if(lets.length<8)lets.push({t:'note',key:'L'+lets.length,lt:lets.length,x,y});});
   // one letter in the starting room, so you meet the lies early
   lets.push({t:'note',key:'L8',lt:0,x:R0*P+4.5,y:R0*P+1.5});
@@ -1092,7 +1100,7 @@ function startStage6(){
   $('stamp').innerHTML=(isOnline()?`ONLINE ${G.ps.filter(Boolean).length}P`:'SP')+'　STAGE 6<br>OCT.11 1996';
   state='play';show('hud',true);setTouchUI(true);
   const c=$('stageCard');c.innerHTML='<b>STAGE 6</b><span>― SCP-093 ―</span>';c.classList.remove('on');void c.offsetWidth;c.classList.add('on');
-  msg('顔を見るな。こっちを向いている時に目が合ったら、終わりだ。手紙を信じるな。',6);
+  msg('白い人たちが、あなたを待っている。ちゃんと顔を見て、目を合わせてあげて。',6);
   lockPtr();
 }
 // eye contact: it is facing you, and you are looking at its face with nothing in between
@@ -1882,7 +1890,7 @@ function localEscape(){
   $('endT').textContent='EXIT';$('endT').className='';$('fear').style.opacity=0;show('hud',false);
   if(G.stage<10){
     $('endText').innerHTML=['','非常口を抜けた――はずだった。<br>足元に、冷たい鉄のレールが二本、闇の奥へ伸びている。','線路の果ての非常口を抜けた。<br>……世界が、平べったくなった気がする。',
-      'エレベーターは止まらずに、下へ、下へ。<br>扉が開くと、そこは真っ暗だった。','非常口の先は、コンクリートの長い廊下だった。<br>廊下の先に、何かが立っている。','扉の向こうは、白い廊下だった。<br>白い人影が、いくつも立っている。','最後の扉――のはずだった。<br>開けた先は、鏡だらけの部屋だった。','鏡の向こうは、コンクリートの地下駐車場だった。<br>遠くで、送電塔の唸る音がする。','スロープの先は、空の絵が描かれた大きな部屋だった。<br>遠くの壁の前に、大きな人形が立っている。','GOALの壁の向こうは、白いタイルと水の部屋だった。<br>水面に、何かの波紋が広がっている。'][G.stage];
+      'エレベーターは止まらずに、下へ、下へ。<br>扉が開くと、そこは真っ暗だった。','非常口の先は、コンクリートの長い廊下だった。<br>廊下の先に、何かが立っている。','扉の向こうは、白い廊下だった。<br>白い人たちが、こっちを向いて待っている。<br>――顔を、よく見てあげて。','最後の扉――のはずだった。<br>開けた先は、鏡だらけの部屋だった。','鏡の向こうは、コンクリートの地下駐車場だった。<br>遠くで、送電塔の唸る音がする。','スロープの先は、空の絵が描かれた大きな部屋だった。<br>遠くの壁の前に、大きな人形が立っている。','GOALの壁の向こうは、白いタイルと水の部屋だった。<br>水面に、何かの波紋が広がっている。'][G.stage];
     $('endStat').textContent=(isOnline()?'全員で ':'')+`STAGE ${G.stage+1} へ……`;
     show('endOv',true);$('retryBtn').hidden=true;return;}
   const best=!isOnline()&&saveBest(G.time);
