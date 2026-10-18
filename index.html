@@ -18,6 +18,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--
 #tint{position:fixed;inset:0;pointer-events:none;mix-blend-mode:multiply;transition:background .2s}
 #tint.red{background:rgba(255,30,30,.8)}
 #tint.green{background:rgba(70,255,100,.6)}
+#tint.water{background:rgba(40,110,170,.75)}
 #snowfx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;display:none}
 #scan{position:fixed;inset:0;pointer-events:none;opacity:.08;background:repeating-linear-gradient(0deg,rgba(0,0,0,.55) 0 1px,transparent 1px 3px)}
 body.shake #view{animation:shake .12s linear infinite}
@@ -196,6 +197,7 @@ h1{font-family:var(--vhs);font-weight:400;font-size:clamp(56px,14vw,104px);margi
       <button data-st="12" aria-pressed="false">12</button>
       <button data-st="13" aria-pressed="false">13</button>
       <button data-st="14" aria-pressed="false">14</button>
+      <button data-st="15" aria-pressed="false">15</button>
     </div>
     <div class="diff" role="group" aria-label="視点">
       <button data-v="top" aria-pressed="true">見下ろし</button>
@@ -449,7 +451,7 @@ function chunk(rx,ry){const k=rx*8192+ry;let c=CH.get(k);
 // with friends the map is a closed 7x7-room square (42x42 cells) around the start; alone it never ends
 const FR=3,FX0=(R0-FR)*P,FX1=(R0+FR+1)*P;let FIN=false;
 const inMap=(x,y)=>!FIN||(x>FX0&&x<FX1&&y>FX0&&y<FX1);
-const WALLV=()=>STAGE===4?9:STAGE===6?12:STAGE===7?13:STAGE===10?21:1;
+const WALLV=()=>STAGE===4?9:STAGE===6?12:STAGE===7?13:STAGE===10?21:STAGE===15?29:1;
 function cellAt(x,y){x=Math.floor(x);y=Math.floor(y);if(STAGE===14)return hotel14(x,y);if(STAGE===13)return hosp13(x,y);if(STAGE===12)return field12(x,y);if(STAGE===11)return field11(x,y);if(STAGE===9)return hall9(x,y);if(STAGE===8)return garageCell(x,y);if(STAGE===2)return tunnelCell(x,y);if(STAGE===5)return hallCell(x,y);if(FIN&&(x<=FX0||x>=FX1||y<=FX0||y>=FX1))return WALLV();
   const rx=Math.floor(x/P),ry=Math.floor(y/P),v=chunk(rx,ry)[(y-ry*P)*P+(x-rx*P)];return v===1?WALLV():v;}
 function setCell(x,y,v){const rx=Math.floor(x/P),ry=Math.floor(y/P);chunk(rx,ry)[(y-ry*P)*P+(x-rx*P)]=v;}
@@ -579,7 +581,7 @@ function trainFeedback(dt){
   else{AU.set(AU.trG,0);AU.set(AU.scG,0);}
 }
 function showBanner(t){const s=$('spotted');s.textContent=t;s.classList.remove('on');void s.offsetWidth;s.classList.add('on');}
-function startStage(n){if(n===14)startStage14();else if(n===13)startStage13();else if(n===12)startStage12();else if(n===11)startStage11();else if(n===10)startStage10();else if(n===9)startStage9();else if(n===8)startStage8();else if(n===7)startStage7();else if(n===6)startStage6();else if(n===5)startStage5();else if(n===4)startStage4();else if(n===3)startStage3();else startStage2();writeSave();refreshLoad();}
+function startStage(n){if(n===15)startStage15();else if(n===14)startStage14();else if(n===13)startStage13();else if(n===12)startStage12();else if(n===11)startStage11();else if(n===10)startStage10();else if(n===9)startStage9();else if(n===8)startStage8();else if(n===7)startStage7();else if(n===6)startStage6();else if(n===5)startStage5();else if(n===4)startStage4();else if(n===3)startStage3();else startStage2();writeSave();refreshLoad();}
 function startStage2(){
   if(!G)return;
   clearPoke();show('scare',false);document.body.classList.remove('shake');show('endOv',false);show('pauseOv',false);show('noteOv',false);
@@ -1720,7 +1722,7 @@ function startStage12(){
   const me=G.ps[G.me];Object.assign(G.p,{x:me.x,y:me.y,a:0,pitch:0,stam:100,exh:false,bob:0});
   Object.assign(G.g,{wait:1e9,state:'wander',tslot:-1});
   try{view=localStorage.getItem('noclip_view')||'top';}catch(e){}
-  $('slots').parentNode.hidden=true;$('tmpL').hidden=false;$('tmpW').hidden=false;
+  $('slots').parentNode.hidden=true;$('tmpL').textContent='体温';$('tmpL').hidden=false;$('tmpW').hidden=false;
   $('stamp').innerHTML=(isOnline()?`ONLINE ${G.ps.filter(Boolean).length}P`:'SP')+'　STAGE 12<br>OCT.11 1996';
   state='play';show('hud',true);setTouchUI(true);
   const c=$('stageCard');c.innerHTML='<b>STAGE 12</b><span>― 雪の森 ―</span>';c.classList.remove('on');void c.offsetWidth;c.classList.add('on');
@@ -2036,6 +2038,71 @@ function stage14Feedback(dt){
   $('fear').style.opacity=Math.max(+$('fear').style.opacity||0,near<8?.15+.45*(1-near/8):0);
   G.gstT=(G.gstT||0)-dt;if(G.gstT<=0&&near<12){G.gstT=.42;AU.noise(.06,300,1.5,.3*(1-near/12),'lowpass');}
 }
+/* ---------- stage 15: the flooded subway ---------- */
+// A subway station flooding from below. The floor rises toward the exit stairs; the water keeps rising.
+// Wading slows you down, and once the water closes over your head your air runs out fast.
+// Keep to higher ground and find the stairs up.
+T[29]=mkTex(g=>{g.fillStyle='#e4e6e2';g.fillRect(0,0,64,64);g.fillStyle='#c7cbc6';for(let y=0;y<64;y+=6)g.fillRect(0,y,64,1);for(let y=0;y<64;y+=6)for(let x=(y/6&1)*6;x<64;x+=12)g.fillRect(x,y,1,6);
+  g.fillStyle='#2d8a4e';g.fillRect(0,26,64,6);g.fillStyle='#d9a13a';g.fillRect(0,32,64,2);g.fillStyle='rgba(60,70,60,.35)';g.fillRect(0,50,64,14);grit(g,14);});
+const WTOP15=mkTex(g=>{g.fillStyle='#c9ccc8';g.fillRect(0,0,64,64);g.strokeStyle='rgba(45,138,78,.7)';g.lineWidth=2;g.strokeRect(2,2,60,60);grit(g,6);});
+const FLOOR15=mkTex(g=>{g.fillStyle='#8f918c';g.fillRect(0,0,64,64);g.fillStyle='#7d7f7a';for(let i=0;i<64;i+=16){g.fillRect(i,0,1,64);g.fillRect(0,i,64,1);}
+  for(let i=0;i<300;i++){g.fillStyle='rgba(40,40,40,.18)';g.fillRect(rnd(64),rnd(64),1,1);}g.fillStyle='#d9b23a';g.fillRect(0,58,64,3);grit(g,10);});
+const CEIL15=mkTex(g=>{g.fillStyle='#55585a';g.fillRect(0,0,64,64);g.fillStyle='#45484a';g.fillRect(0,0,64,2);g.fillRect(0,0,2,64);grit(g,10);});
+let D15=1;
+// floor height: rises toward the exit, with some sunken rooms
+function h15(x,y){x=Math.floor(x);y=Math.floor(y);if(!G.exit)return 0;const d=Math.hypot(x+.5-G.exit.x,y+.5-G.exit.y);
+  let h=4*(1-Math.min(1,d/D15));if(hash(Math.floor(x/P),Math.floor(y/P),1515)<.28)h-=.7;return h;}
+function heightGrid(ox,oy,w,hh){const g=new Float32Array(w*hh);for(let y=0;y<hh;y++)for(let x=0;x<w;x++)g[y*w+x]=h15(ox+x,oy+y);return g;}
+function waterColor15(wx,wy,depth){const tm=performance.now()/1000,u=(((wx+tm*.1)*TEX)|0)&TM,v=(((wy+Math.sin(tm*.7+wx*2)*.05)*TEX)|0)&TM;
+  POOLK=depth>.8?.45:.8;return WATER.px[v*TEX+u];}
+function layoutStage15(){
+  const r=mulberry(SEED^0x15ab1e),an=r()*Math.PI*2,dist=17+r()*3;
+  const tx=Math.floor(START+Math.cos(an)*dist),ty=Math.floor(START+Math.sin(an)*dist);let ex=null;
+  for(let rad=0;rad<14&&!ex;rad++)for(let y=ty-rad;y<=ty+rad&&!ex;y++)for(let x=tx-rad;x<=tx+rad;x++){
+    if(Math.max(Math.abs(x-tx),Math.abs(y-ty))!==rad||!inMap(x-1,y-1)||!inMap(x+1,y+1)||cellAt(x,y)!==29)continue;
+    const lx=((x%P)+P)%P,ly=((y%P)+P)%P;if(lx===0&&ly===0)continue;
+    if((cellAt(x-1,y)===0&&cellAt(x+1,y)===0)||(cellAt(x,y-1)===0&&cellAt(x,y+1)===0)){ex={x,y};break;}}
+  setCell(ex.x,ex.y,5);G.exitPos=ex;G.exit={x:ex.x+.5,y:ex.y+.5};
+  D15=Math.hypot(START-G.exit.x,START-G.exit.y)*1.3;
+  G.wl=-.3;G.oxy={};for(const q of G.ps)if(q)G.oxy[q.slot]=100;
+}
+function startStage15(){
+  if(!G)return;
+  clearPoke();show('scare',false);document.body.classList.remove('shake');show('endOv',false);show('pauseOv',false);show('noteOv',false);hideS3UI();
+  $('msg').classList.remove('show');msgT=0;
+  STAGE=15;LMV=.7;FIN=true;SEED=(SEED^0x0b0015)|0;CH=new Map();
+  G.stage=15;G.over=false;G.toStage2=false;G.results=null;G.enraged=false;G.train=null;G.s3=null;G.s5=null;G.arrows=[];G.shriekers=[];G.mobs=[];G.fakes=[];G.suits=[];G.shadows=[];G.lights=null;G.rl=null;G.doll=null;G.fixed=[];G.swimmers=[];G.ripples=[];G.party=[];G.balloons=[];G.stalk=[];G.fires=[];G.prints=[];G.nurses=[];G.beds=[];G.guests=[];G.doors=[];
+  G.taken=new Set();G.ltaken=new Set(['start']);layoutStage15();
+  for(const q of G.ps)if(q){const[ox,oy]=SPAWN[q.slot];q.status='alive';q.x=q.dx=START+ox;q.y=q.dy=START+oy;q.time=0;}
+  const me=G.ps[G.me];Object.assign(G.p,{x:me.x,y:me.y,a:0,pitch:0,stam:100,exh:false,bob:0});
+  Object.assign(G.g,{wait:1e9,state:'wander',tslot:-1});
+  try{view=localStorage.getItem('noclip_view')||'top';}catch(e){}
+  $('slots').parentNode.hidden=true;$('tmpL').textContent='酸素';$('tmpL').hidden=false;$('tmpW').hidden=false;G.wlMsg=0;
+  $('stamp').innerHTML=(isOnline()?`ONLINE ${G.ps.filter(Boolean).length}P`:'SP')+'　STAGE 15<br>OCT.11 1996';
+  state='play';show('hud',true);setTouchUI(true);
+  const c=$('stageCard');c.innerHTML='<b>STAGE 15</b><span>― 地下鉄 ―</span>';c.classList.remove('on');void c.offsetWidth;c.classList.add('on');
+  msg('駅に水が流れこんでいる。水位はどんどん上がる。高い方へ――地上への階段を目指せ。',7);
+  lockPtr();
+}
+const depth15=(x,y)=>G.wl-h15(x,y);
+// host / single player: the rising water and everybody's air
+function updateFlood(dt){
+  const D=DIFF[diff];G.wl+=dt*4/150*D.spd;
+  for(const o of alivePs()){let a=G.oxy[o.slot];if(a==null)a=100;
+    a=depth15(o.x,o.y)>.8?a-dt*100/9:Math.min(100,a+dt*35);G.oxy[o.slot]=a;
+    if(a<=0){G.oxy[o.slot]=0;playerDone(o.slot,'caught');}}
+}
+// everyone: the gauge, the blue under water, the sound of it
+function stage15Feedback(dt){
+  const me=G.p,dp=depth15(me.x,me.y);let a=G.oxy[G.me];if(a==null)a=100;
+  $('tmpBar').style.width=a.toFixed(1)+'%';$('tmpBar').style.background=a<35?'#ff6a5a':'#7ec8ff';
+  $('tint').className=dp>.8?'water':'';
+  const lv=Math.floor((G.wl+.3)/.8);if(lv>G.wlMsg){G.wlMsg=lv;msg('ゴボゴボ……水位が上がってきた。高い方へ！',2.5);AU.noise(2,250,.8,.3,'lowpass');}
+  if(dp>.8&&!G.under){G.under=true;msg('水に沈んだ！ 息が続くうちに浅い所へ！',2.5);AU.noise(.6,400,1,.4,'lowpass');}
+  if(dp<=.8)G.under=false;
+  G.wfT=(G.wfT||0)-dt;if(G.wfT<=0){G.wfT=dp>.8?.5:2.2;if(dp>.8)AU.tone(500+Math.random()*400,.06,.05,'sine',0,900);else AU.noise(2.4,500,.6,.08,'bandpass');}
+  if(a<35)$('fear').style.opacity=Math.max(+$('fear').style.opacity||0,.5*(1-a/35));
+}
 /* ---------- story ---------- */
 const NOTES=[
   {h:'拾った紙切れ',p:'あれは目がいい。見通しのいい部屋では、遠くから見つかる。\n壁や柱の陰を歩け。\n走れば足音で気づかれる。\n床の赤い矢印は嘘をつく。出口は、矢印の反対にある。\n\n低い唸り声が聞こえたら、近くにいる。'},
@@ -2194,6 +2261,7 @@ function netTick(dt){
   netAcc+=dt;if(netAcc<1/15)return;netAcc=0;
   if(isHost()){const g=G.g;
     bc({t:'s',g:[+g.x.toFixed(2),+g.y.toFixed(2),+g.a.toFixed(2),g.state==='chase'?1:0,+g.chaseT.toFixed(2),g.wait>0?1:0,g.tslot],
+      WL:G.stage===15?+G.wl.toFixed(3):null,OX:G.stage===15?G.oxy:null,
       GU:G.stage===14?G.guests.map(m=>[+m.x.toFixed(2),+m.y.toFixed(2)]):null,
       KY:G.stage===14&&G.key14.taken?1:0,
       DO:G.stage===14?G.doors.reduce((a,d)=>{if(d.open)a.push(d.i);return a;},[]):null,
@@ -2214,6 +2282,7 @@ function netTick(dt){
     try{NET.conn.send({t:'p',x:+p.x.toFixed(2),y:+p.y.toFixed(2),a:+p.a.toFixed(2),r:p.run?1:0,m:p.moving?1:0});}catch(e){}}
 }
 function applySnap(d){const g=G.g,s=d.g;
+  if(G.stage===15&&d.WL!=null){G.wl=d.WL;if(d.OX)G.oxy=d.OX;}
   if(G.stage===14&&d.GU&&G.doors){G.guests=d.GU.map(v=>({x:v[0],y:v[1]}));if(d.KY)G.key14.taken=true;if(d.DO)for(const i of d.DO)if(G.doors[i])G.doors[i].open=true;}
   if(G.stage===13&&d.NU&&G.nurses)d.NU.forEach((v,i)=>{const m=G.nurses[i];if(m){m.x=v[0];m.y=v[1];m.state=v[2]==='c'?'chase':v[2]==='l'?'listen':'patrol';}});
   if(G.stage===12&&d.ST&&G.stalk){d.ST.forEach((v,i)=>{const m=G.stalk[i];if(m){m.x=v[0];m.y=v[1];m.state=v[2]==='c'?'chase':v[2]==='t'?'track':'wander';}});if(d.TP)G.temps=d.TP;}
@@ -2293,7 +2362,7 @@ const tc=t=>[t/3600,t/60%60,t%60].map(v=>String(Math.floor(v)).padStart(2,'0')).
 // save slots: an auto checkpoint plus three slots you pick; a save is the start of the stage you were on
 const SLOTS=['auto','1','2','3'],slotName=k=>k==='auto'?'オート':'データ'+k;
 const slotKey=k=>'noclip_save_'+k;
-function okSave(v){return v&&v.stage>=1&&v.stage<=14&&v.diff>=0&&v.diff<=2?v:null;}
+function okSave(v){return v&&v.stage>=1&&v.stage<=15&&v.diff>=0&&v.diff<=2?v:null;}
 function readSlot(k){try{return okSave(JSON.parse(localStorage.getItem(slotKey(k))||'null'));}catch(e){return null;}}
 try{const old=localStorage.getItem('noclip_save');if(old&&!localStorage.getItem(slotKey('1')))localStorage.setItem(slotKey('1'),old);localStorage.removeItem('noclip_save');}catch(e){}
 function curSave(){return{stage:G.stage,diff,time:Math.floor(G.time),at:Date.now()};}
@@ -2361,7 +2430,7 @@ function toTitle(){hideS3UI();
 function openNote(id){const n=typeof id==='object'?id:NOTES[id];state='note';AU.page();$('noteH').textContent=n.h;$('noteP').textContent=n.p;show('noteOv',true);if(!isOnline())AU.silence();if(document.pointerLockElement)document.exitPointerLock();}
 function closeNote(){if(state!=='note')return;show('noteOv',false);state='play';last=performance.now();lockPtr();}
 // pick where a fresh game begins (4 = right after Sonic.exe); remembered per browser
-let startStageSel=1;try{const v=+localStorage.getItem('noclip_startstage');if(v>=1&&v<=14)startStageSel=v;}catch(e){}
+let startStageSel=1;try{const v=+localStorage.getItem('noclip_startstage');if(v>=1&&v<=15)startStageSel=v;}catch(e){}
 function setStartStage(n){startStageSel=n;try{localStorage.setItem('noclip_startstage',n);}catch(e){}
   document.querySelectorAll('[data-st]').forEach(b=>{b.setAttribute('aria-pressed',+b.dataset.st===n);if(b.dataset.st==='1')b.textContent=n===1?'STAGE 1から':'1';else b.textContent=+b.dataset.st===n?`STAGE ${n}から`:b.dataset.st;});}
 document.querySelectorAll('[data-st]').forEach(b=>b.addEventListener('click',()=>setStartStage(+b.dataset.st)));setStartStage(startStageSel);
@@ -2385,7 +2454,7 @@ function playerDone(slot,st){   // host or single player only
   if(isHost())bc({t:'done',slot,st});
   applyDone(slot,st);
   // the first one out of stage 1 drags everybody (even the caught) onto the tracks
-  if(G.stage<14&&st==='escaped'&&!G.toStage2){G.toStage2=true;G.over=true;const g0=G,n=G.stage+1;
+  if(G.stage<15&&st==='escaped'&&!G.toStage2){G.toStage2=true;G.over=true;const g0=G,n=G.stage+1;
     if(isHost())bc({t:'stagesoon',name:q.name});
     setTimeout(()=>{if(G!==g0||G.stage!==n-1)return;if(isHost())bc({t:'stage',n});startStage(n);},3000);return;}
   if(G.toStage2)return;
@@ -2410,13 +2479,13 @@ function endScreenButtons(){
 function localEscape(){
   state='end';AU.silence();setTouchUI(false);if(document.pointerLockElement)document.exitPointerLock();placeLabels([]);
   $('endT').textContent='EXIT';$('endT').className='';$('fear').style.opacity=0;show('hud',false);
-  if(G.stage<14){
+  if(G.stage<15){
     $('endText').innerHTML=['','非常口を抜けた――はずだった。<br>足元に、冷たい鉄のレールが二本、闇の奥へ伸びている。','線路の果ての非常口を抜けた。<br>……世界が、平べったくなった気がする。',
-      'エレベーターは止まらずに、下へ、下へ。<br>扉が開くと、そこは真っ暗だった。','非常口の先は、コンクリートの長い廊下だった。<br>廊下の先に、何かが立っている。','扉の向こうは、白い廊下だった。<br>白い人たちが、こっちを向いて待っている。<br>――顔を、よく見てあげて。','最後の扉――のはずだった。<br>開けた先は、鏡だらけの部屋だった。','鏡の向こうは、コンクリートの地下駐車場だった。<br>遠くで、送電塔の唸る音がする。','スロープの先は、空の絵が描かれた大きな部屋だった。<br>遠くの壁の前に、大きな人形が立っている。','GOALの壁の向こうは、白いタイルと水の部屋だった。<br>水面に、何かの波紋が広がっている。','プールの扉の先は、明るい草原だった。<br>風船とパーティーの飾りが、風に揺れている。<br>遠くで、誰かが笑っている。','緑の扉を開けると、冷たい風が吹きこんできた。<br>一面の雪と、黒い木々。<br>振り返ると、扉はもう雪に埋もれていた。','山小屋の扉を開けると、消毒液の匂いがした。<br>ピッ……ピッ……と、心電図の音が聞こえる。<br>ここは、夜の病院だ。','非常口の先は、じゅうたんの敷かれたホテルの廊下だった。<br>自分の部屋の鍵を、どこかで落としてしまったらしい。<br>廊下の奥で、誰かの足音がする。'][G.stage];
+      'エレベーターは止まらずに、下へ、下へ。<br>扉が開くと、そこは真っ暗だった。','非常口の先は、コンクリートの長い廊下だった。<br>廊下の先に、何かが立っている。','扉の向こうは、白い廊下だった。<br>白い人たちが、こっちを向いて待っている。<br>――顔を、よく見てあげて。','最後の扉――のはずだった。<br>開けた先は、鏡だらけの部屋だった。','鏡の向こうは、コンクリートの地下駐車場だった。<br>遠くで、送電塔の唸る音がする。','スロープの先は、空の絵が描かれた大きな部屋だった。<br>遠くの壁の前に、大きな人形が立っている。','GOALの壁の向こうは、白いタイルと水の部屋だった。<br>水面に、何かの波紋が広がっている。','プールの扉の先は、明るい草原だった。<br>風船とパーティーの飾りが、風に揺れている。<br>遠くで、誰かが笑っている。','緑の扉を開けると、冷たい風が吹きこんできた。<br>一面の雪と、黒い木々。<br>振り返ると、扉はもう雪に埋もれていた。','山小屋の扉を開けると、消毒液の匂いがした。<br>ピッ……ピッ……と、心電図の音が聞こえる。<br>ここは、夜の病院だ。','非常口の先は、じゅうたんの敷かれたホテルの廊下だった。<br>自分の部屋の鍵を、どこかで落としてしまったらしい。<br>廊下の奥で、誰かの足音がする。','部屋の扉の先は、地下鉄の駅のホームだった。<br>足元に、冷たい水が流れこんでくる。<br>――水位が、上がっている。'][G.stage];
     $('endStat').textContent=(isOnline()?'全員で ':'')+`STAGE ${G.stage+1} へ……`;
     show('endOv',true);$('retryBtn').hidden=true;return;}
   const best=!isOnline()&&saveBest(G.time);
-  $('endText').innerHTML='鍵が回り、扉が開いた。<br>部屋の窓から、本物の朝日が差しこんでいる。<br>ベッドに倒れこむと、廊下のほうで、ノックの音が一度だけした。';
+  $('endText').innerHTML='階段を駆け上がると、雨上がりの地上に出た。<br>振り返ると、地下鉄の入口は水で満ちていた。<br>水面に、乗るはずだった電車の明かりが揺れている。';
   $('endStat').textContent=`${DIFF[diff].name}　脱出時間 ${fmt(G.time)}${best?'　最速記録！':''}`;
   show('endOv',true);endScreenButtons();
 }
@@ -2531,6 +2600,7 @@ function jumpscare(){
       else if(STAGE===2){g.scale(s/40,s/40);g.translate(-32,-34);trainFace(g);}
       else if(STAGE===4){g.scale(s/40,s/40);g.translate(-32,-30);roomkerPic(g);}
       else if(STAGE===5){g.scale(s/36,s/36);g.translate(-32,-16);statuePic(g);}
+      else if(STAGE===15){g.fillStyle='rgba(30,90,140,.85)';g.fillRect(-s*2,-s*2,4*s,4*s);g.fillStyle='rgba(255,255,255,.6)';for(let k=0;k<14;k++){g.beginPath();g.arc((Math.random()-.5)*s*1.6,(Math.random()-.5)*s*1.6,s*(.02+Math.random()*.05),0,7);g.fill();}}
       else if(STAGE===14){g.scale(s/34,s/34);g.translate(-32,-12);guestPic(g);}
       else if(STAGE===13){g.scale(s/34,s/34);g.translate(-32,-14);nursePic(g);}
       else if(STAGE===12){g.fillStyle='rgba(225,232,240,.5)';g.fillRect(-s,-s,2*s,2*s);g.scale(s/40,s/40);g.translate(-32,-12);stalkPic(g);}
@@ -2549,7 +2619,7 @@ function jumpscare(){
       g.fillStyle='#000';g.fillRect(0,h*.42,w,h*.16);g.fillStyle='#fff';g.font=`${Math.round(h*.08)}px DotGothic16, monospace`;g.textAlign='center';g.textBaseline='middle';g.fillText('NO SIGNAL',w/2,h/2);
       AU.tone(1000,.9,.12,'sine');
       setTimeout(()=>{if(state!=='end')return;show('scare',false);$('endT').textContent='信号途絶';$('endT').className='dead';
-        $('endText').innerHTML=STAGE===14?'冷たい手が、あなたの鍵を取り上げた。<br>「チェックアウトは、まだですよ」<br>扉が閉まり、廊下はまた静かになった。':STAGE===13?'ナースが、やさしく手首をつかんだ。<br>「検温の時間ですよ」<br>……心電図の音が、ピーーーと長く鳴った。':STAGE===12?((G.temps&&G.temps[G.me]<=.5)?'指先の感覚が消えて、膝から雪に沈んだ。<br>吹雪が、すぐにあなたを白く埋めた。<br>その上を、細長い足跡が通りすぎていく。':'足跡の先に、白くて細長いものが立っていた。<br>長い腕が、ゆっくりと伸びてきた。<br>雪の上の足跡は、そこで途切れている。'):STAGE===11?'たくさんの笑顔に囲まれて、風船を手渡された。<br>「パーティーへようこそ =)」<br>……もう、ここから出たいとは思わない。':STAGE===10?'足首をつかまれ、水の中に引きずり込まれた。<br>水面の波紋は、すぐに消えた。':STAGE===9?'乾いた音がひとつ。<br>人形は、また壁のほうを向いて歌い始めた。':STAGE===8?'暗闇の中で、目と口だけが笑った。<br>次に明かりがついたとき、そこには誰もいなかった。':STAGE===7?'白い化物は、脱ぎ捨てた服の代わりに、あなたを着た。<br>鏡の中を、あなたの姿をした何かが歩いていく。':STAGE===6?'白い腕が、肩をつかんだ。<br>最後に見たのは、真っ黒な口の奥だった。':STAGE===5?'首の後ろで、乾いた音がした。<br>まばたきをした覚えは、ない。':STAGE===4?'耳元で、湿った息の音がした。<br>あれには、最初から全部聞こえていた。':STAGE===3?'赤い目が、すぐ目の前で笑った。<br>「Good show.」':STAGE===2?'赤い車体と無数の脚が、視界を埋め尽くした。<br>レールの上に、カメラだけが転がっている。':'最後に映っていたのは、湿ったカーペットの上を<br>引きずられていく視界だった。<br>テープは、まだ回り続けている。';
+        $('endText').innerHTML=STAGE===15?'息が、続かなかった。<br>濁った水の中で、駅の案内放送だけが聞こえていた。<br>「――次は、終点です」':STAGE===14?'冷たい手が、あなたの鍵を取り上げた。<br>「チェックアウトは、まだですよ」<br>扉が閉まり、廊下はまた静かになった。':STAGE===13?'ナースが、やさしく手首をつかんだ。<br>「検温の時間ですよ」<br>……心電図の音が、ピーーーと長く鳴った。':STAGE===12?((G.temps&&G.temps[G.me]<=.5)?'指先の感覚が消えて、膝から雪に沈んだ。<br>吹雪が、すぐにあなたを白く埋めた。<br>その上を、細長い足跡が通りすぎていく。':'足跡の先に、白くて細長いものが立っていた。<br>長い腕が、ゆっくりと伸びてきた。<br>雪の上の足跡は、そこで途切れている。'):STAGE===11?'たくさんの笑顔に囲まれて、風船を手渡された。<br>「パーティーへようこそ =)」<br>……もう、ここから出たいとは思わない。':STAGE===10?'足首をつかまれ、水の中に引きずり込まれた。<br>水面の波紋は、すぐに消えた。':STAGE===9?'乾いた音がひとつ。<br>人形は、また壁のほうを向いて歌い始めた。':STAGE===8?'暗闇の中で、目と口だけが笑った。<br>次に明かりがついたとき、そこには誰もいなかった。':STAGE===7?'白い化物は、脱ぎ捨てた服の代わりに、あなたを着た。<br>鏡の中を、あなたの姿をした何かが歩いていく。':STAGE===6?'白い腕が、肩をつかんだ。<br>最後に見たのは、真っ黒な口の奥だった。':STAGE===5?'首の後ろで、乾いた音がした。<br>まばたきをした覚えは、ない。':STAGE===4?'耳元で、湿った息の音がした。<br>あれには、最初から全部聞こえていた。':STAGE===3?'赤い目が、すぐ目の前で笑った。<br>「Good show.」':STAGE===2?'赤い車体と無数の脚が、視界を埋め尽くした。<br>レールの上に、カメラだけが転がっている。':'最後に映っていたのは、湿ったカーペットの上を<br>引きずられていく視界だった。<br>テープは、まだ回り続けている。';
         if(isOnline()&&G.stage===1)$('endText').innerHTML+='<br>――誰かが脱出できれば、まだ終わりじゃない。';
         $('endStat').textContent=`${DIFF[diff].name}　STAGE ${G.stage}　記録時間 ${tc(G.ps[G.me].time||G.time)}`;show('endOv',true);$('fear').style.opacity=0;endScreenButtons();},1200);
     }})(t0);
@@ -2596,7 +2666,7 @@ function localUpdate(dt,frozen){
   const wantRun=(keys.ShiftLeft||keys.ShiftRight||touchRun)&&p.moving&&fwd&&!frozen;
   p.run=wantRun&&!p.exh&&p.stam>0;
   if(p.run){p.stam-=30*dt;if(p.stam<=0){p.stam=0;p.exh=true;msg('息が……続かない……',2);}}else{p.stam=Math.min(100,p.stam+(p.moving?12:20)*dt);if(p.exh&&p.stam>35)p.exh=false;}
-  const spd=(p.run?5.0:p.exh?2.0:3.0)*dt*(STAGE===10&&water10(p.x,p.y)?.55:1)*(STAGE===12?.85:1)*(STAGE===13&&underBed(p.x,p.y)?.5:1);
+  const spd=(p.run?5.0:p.exh?2.0:3.0)*dt*(STAGE===10&&water10(p.x,p.y)?.55:1)*(STAGE===12?.85:1)*(STAGE===13&&underBed(p.x,p.y)?.5:1)*(STAGE===15?(depth15(p.x,p.y)>.8?.5:depth15(p.x,p.y)>0?.7:1):1);
   const vx=mvx*spd,vy=mvy*spd,R=.22;
   if(!blocked(p.x+vx,p.y,R))p.x+=vx;else if(hitsDoor(p.x+vx,p.y,R))doorBump();
   if(!blocked(p.x,p.y+vy,R))p.y+=vy;else if(hitsDoor(p.x,p.y+vy,R))doorBump();
@@ -2611,7 +2681,7 @@ function localUpdate(dt,frozen){
     if(G.tal>=G.need)continue;
     if(isClient()){if(!G.pend.has(it.key)){G.pend.add(it.key);try{NET.conn.send({t:'pick',key:it.key});}catch(e){}}}
     else hostPick(G.me,it.key);}
-  if(G.stage===2)trainFeedback(dt);else if(G.stage===4)stage4Feedback(dt);else if(G.stage===5)stage5Feedback(dt);else if(G.stage===8)stage8Feedback(dt);else if(G.stage===9)stage9Feedback(dt);else if(G.stage===10)stage10Feedback(dt);else if(G.stage===11)stage11Feedback(dt);else if(G.stage===12)stage12Feedback(dt);else if(G.stage===13)stage13Feedback(dt);else if(G.stage===14)stage14Feedback(dt);
+  if(G.stage===2)trainFeedback(dt);else if(G.stage===4)stage4Feedback(dt);else if(G.stage===5)stage5Feedback(dt);else if(G.stage===8)stage8Feedback(dt);else if(G.stage===9)stage9Feedback(dt);else if(G.stage===10)stage10Feedback(dt);else if(G.stage===11)stage11Feedback(dt);else if(G.stage===12)stage12Feedback(dt);else if(G.stage===13)stage13Feedback(dt);else if(G.stage===14)stage14Feedback(dt);else if(G.stage===15)stage15Feedback(dt);
   // fear & audio
   const gd=Math.hypot(gh.x-p.x,gh.y-p.y);
   const tf=clamp(1-gd/9,0,1)*(gh.state==='chase'?1:.7);G.fear+=(tf-G.fear)*Math.min(1,dt*3);
@@ -2731,7 +2801,7 @@ function render3D(){
   const p=G.p,dirX=Math.cos(p.a),dirY=Math.sin(p.a),plX=-dirY*PLANE,plY=dirX*PLANE;
   const hz=(H>>1)+Math.round(p.pitch*H)+((p.bob*QS())|0),noff=rnd(65536),grain=4+G.fear*30;
   const r0x=dirX-plX,r0y=dirY-plY,r1x=dirX+plX,r1y=dirY+plY;
-  const AW=61,aox=Math.floor(p.x)-30,aoy=Math.floor(p.y)-30,AG=arrowGrid(aox,aoy,AW),WG=STAGE===10?waterGrid(aox,aoy,AW):null;
+  const AW=61,aox=Math.floor(p.x)-30,aoy=Math.floor(p.y)-30,AG=arrowGrid(aox,aoy,AW),WG=STAGE===10?waterGrid(aox,aoy,AW):null,HG=STAGE===15?heightGrid(aox,aoy,AW,AW):null;
   for(let y=0;y<H;y++){
     const off=y-hz;if(off===0){for(let x=0;x<W;x++)buf[y*W+x]=0xff000000;continue;}
     const floor=off>0,rd=(.5*S)/Math.abs(off);
@@ -2745,6 +2815,10 @@ function render3D(){
       else if(STAGE===4)c=(floor?FLOOR4:CEIL4).px[ti];
       else if(STAGE===7)c=(floor?FLOOR7:CEIL5).px[ti];
       else if(STAGE===9)c=(floor?FLOOR9:CEIL9).px[ti];
+      else if(STAGE===15){const gx=Math.floor(fx)-aox,gy=Math.floor(fy)-aoy;
+        if(floor&&gx>=0&&gy>=0&&gx<AW&&gy<AW&&HG[gy*AW+gx]<G.wl){c=waterColor15(fx,fy,G.wl-HG[gy*AW+gx]);shade(i,c,(lm*fog+BASE)*POOLK,0,NOISE[(i+noff)&65535]*grain);continue;}
+        const lampC=!floor&&(Math.floor(fx)&1)&&(Math.floor(fy)&1),tk=floor?FLOOR15:lampC?LAMP:CEIL15;c=tk.px[ti];
+        if(lampC&&tk.em[ti]){shade(i,c,.5+.4*fogf(rd),0,0);continue;}}
       else if(STAGE===14){const lampC=!floor&&(Math.floor(fx)%4===2)&&(Math.floor(fy)-D14Y0)%6===3,tk=floor?CARPETS[carpetAt(fy)]:lampC?LAMP:CEIL14;c=tk.px[ti];
         if(lampC&&tk.em[ti]){shade(i,c,.5+.4*fogf(rd),0,0);continue;}}
       else if(STAGE===13){const lampC=!floor&&(Math.floor(fx)%3===0)&&(Math.floor(fy)&1),tk=floor?FLOOR13:lampC?LAMP:CEIL13;c=tk.px[ti];
@@ -2920,6 +2994,7 @@ function renderTop(){
   // cells on screen, looked up once per frame
   const gx0=Math.floor(cam.x-W/2/Z)-1,gy0=Math.floor(cam.y-H/2/Z)-1,gw=Math.ceil(W/Z)+4,gh2=Math.ceil(H/Z)+4,cg=new Uint8Array(gw*gh2);
   for(let y=0;y<gh2;y++)for(let x=0;x<gw;x++)cg[y*gw+x]=cellAt(gx0+x,gy0+y);
+  const chg=STAGE===15?heightGrid(gx0,gy0,gw,gh2):null;
   const cw=STAGE===10?new Uint8Array(gw*gh2):null;if(cw)for(let y=0;y<gh2;y++)for(let x=0;x<gw;x++)cw[y*gw+x]=water10(gx0+x,gy0+y)?1:0;
   const lit=ENV+BASE,dim=ENV*.62+BASE,dyn=STAGE===4||STAGE===8||STAGE===12;
   for(let y=0;y<H;y++){const wy=cam.y+(y-H/2)/Z,cy=Math.floor(wy),tv=((wy*TEX)|0)&TM,fy=wy-cy,row=(cy-gy0)*gw-gx0;
@@ -2932,9 +3007,10 @@ function renderTop(){
         if(lv&&ft.em[fi]){buf[i]=ft.px[fi];continue;}
         const fl=dyn?lmAt(wx,cy+1.02)*ENV*(lv?1:.62)+BASE:(lv?lit:dim);shade(i,ft.px[fi],fl*.9,0,NOISE[(i+noff)&65535]*grain);continue;
       }
-      const tex=wall?(STAGE===9&&v===5?T[20]:v===3||v===5?T[v]:v===8?WTOP2:v===9?WTOP4:v===12?WTOP6:v===13?WTOP7:v===21?WTOP10:v===26?T[26]:v===27?T[27]:v===28?WTOP14:v===25?WTOP13:v===24?WTOP12:v===22?WTOP11:v===23?TENT_TOP:STAGE===8?WTOP2:WTOP):STAGE===14?CARPETS[carpetAt(wy)]:STAGE===13?FLOOR13:STAGE===12?SNOW12:STAGE===11?GRASS11:STAGE===10?FLOOR10:STAGE===9?FLOOR9:STAGE===8?FLOOR8:STAGE===7?FLOOR7:STAGE===4?FLOOR4:STAGE===2?(cy===TY?RAIL:cy===TY-1||cy===TY+1?BALLAST:CONC):FLOOR,lv=visD[i*4+(wall?0:1)]>127;
+      const tex=wall?(STAGE===9&&v===5?T[20]:v===3||v===5?T[v]:v===8?WTOP2:v===9?WTOP4:v===12?WTOP6:v===13?WTOP7:v===21?WTOP10:v===29?WTOP15:v===26?T[26]:v===27?T[27]:v===28?WTOP14:v===25?WTOP13:v===24?WTOP12:v===22?WTOP11:v===23?TENT_TOP:STAGE===8?WTOP2:WTOP):STAGE===15?FLOOR15:STAGE===14?CARPETS[carpetAt(wy)]:STAGE===13?FLOOR13:STAGE===12?SNOW12:STAGE===11?GRASS11:STAGE===10?FLOOR10:STAGE===9?FLOOR9:STAGE===8?FLOOR8:STAGE===7?FLOOR7:STAGE===4?FLOOR4:STAGE===2?(cy===TY?RAIL:cy===TY-1||cy===TY+1?BALLAST:CONC):FLOOR,lv=visD[i*4+(wall?0:1)]>127;
       if(lv&&tex.em[ti]){buf[i]=tex.px[ti];continue;}
       const ll=dyn?lmAt(wx,wy)*ENV*(lv?1:.62)+BASE:(lv?lit:dim);
+      if(STAGE===15&&!wall&&chg[row+cx]<G.wl){const pc=waterColor15(wx,wy,G.wl-chg[row+cx]);shade(i,pc,ll*POOLK,0,NOISE[(i+noff)&65535]*grain);continue;}
       if(STAGE===10&&!wall&&cw[row+cx]){const pc=poolColor(wx,wy);shade(i,pc,ll*POOLK,0,NOISE[(i+noff)&65535]*grain);continue;}
       shade(i,tex.px[ti],ll*(wall?.42:1),0,NOISE[(i+noff)&65535]*grain);
     }}
@@ -2982,7 +3058,7 @@ function loop(now){
     const on=isOnline(),live=state==='play'||(on&&(state==='pause'||state==='note'||state==='end'));
     if(live)localUpdate(dt,state!=='play');
     // offline the world stops while paused; online it keeps going for everyone
-    if(!isClient()&&!G.over&&(state==='play'||on)){if(G.stage===2)updateTrain(dt);else if(G.stage===1)updateGhost(dt);else if(G.stage===4)updateRoomker(dt);else if(G.stage===5)update173(dt);else if(G.stage===6)updateMobs(dt);else if(G.stage===7)updateFakes(dt);else if(G.stage===8)updatePower(dt);else if(G.stage===9)updateDoll(dt);else if(G.stage===10)updateSwimmers(dt);else if(G.stage===11)updateParty(dt);else if(G.stage===12)updateSnow(dt);else if(G.stage===13)updateNurses(dt);else if(G.stage===14)updateGuests(dt);}
+    if(!isClient()&&!G.over&&(state==='play'||on)){if(G.stage===2)updateTrain(dt);else if(G.stage===1)updateGhost(dt);else if(G.stage===4)updateRoomker(dt);else if(G.stage===5)update173(dt);else if(G.stage===6)updateMobs(dt);else if(G.stage===7)updateFakes(dt);else if(G.stage===8)updatePower(dt);else if(G.stage===9)updateDoll(dt);else if(G.stage===10)updateSwimmers(dt);else if(G.stage===11)updateParty(dt);else if(G.stage===12)updateSnow(dt);else if(G.stage===13)updateNurses(dt);else if(G.stage===14)updateGuests(dt);else if(G.stage===15)updateFlood(dt);}
     if(on)netTick(dt);
     voiceTick();
     if(state==='play'||state==='note'||(on&&state==='pause'))render();
