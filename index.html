@@ -1957,8 +1957,16 @@ function layoutStage14(){
   // the real room, plus a few doors elsewhere with the very same number
   const mine=G.doors.filter(d=>d.k===red),pick=mine[Math.floor(r()*mine.length)];pick.no=no;pick.real=true;
   const other=G.doors.filter(d=>d.k!==red);for(let i=0;i<4;i++)other[Math.floor(r()*other.length)].no=no;
+  // the room key lies in a corridor far from the start
+  const kc=[];for(let k=0;k<4;k++)for(let x=30;x<D14W-2;x++)kc.push([x,3+6*k]);
+  const kk=kc[Math.floor(r()*kc.length)];G.key14={x:D14X0+kk[0]+.5,y:D14Y0+kk[1]+.5,taken:false};
   G.guests=[];
+  for(let i=0;i<3;i++){const k=Math.floor(r()*4),x=20+Math.floor(r()*(D14W-24));
+    G.guests.push({x:D14X0+x+.5,y:D14Y0+3+6*k+.5,a:0,perm:true,state:'walk',tgt:null,wT:0,lost:0,lx:0,ly:0,repath:0,field:null,fk:''});}
 }
+const KEY14=mkTex(g=>{g.fillStyle='#e8c25a';g.beginPath();g.arc(20,32,9,0,7);g.fill();g.fillStyle='#000';g.beginPath();g.arc(20,32,4,0,7);g.fill();
+  g.fillStyle='#e8c25a';g.fillRect(28,30,26,5);g.fillRect(46,35,3,6);g.fillRect(51,35,3,8);
+  g.fillStyle='#d6463a';g.fillRect(8,40,10,14);g.fillStyle='#fff';g.fillRect(10,44,6,1);g.fillRect(10,47,6,1);},(r,gg,b)=>r>200&&gg>170&&b<120);
 function startStage14(){
   if(!G)return;
   clearPoke();show('scare',false);document.body.classList.remove('shake');show('endOv',false);show('pauseOv',false);show('noteOv',false);hideS3UI();
@@ -1975,9 +1983,8 @@ function startStage14(){
   $('stamp').innerHTML=(isOnline()?`ONLINE ${G.ps.filter(Boolean).length}P`:'SP')+'　STAGE 14<br>OCT.11 1996';
   state='play';show('hud',true);setTouchUI(true);show('tAct',isTouch);
   const c=$('stageCard');c.innerHTML='<b>STAGE 14</b><span>― ホテル ―</span>';c.classList.remove('on');void c.offsetWidth;c.classList.add('on');
-  const rm=G.room;msg(`鍵のタグ：「${rm.no}号室　${CARPET_NAMES[rm.colour]}のじゅうたんの廊下」　ほかのドアは開けるな。`,10);
-  G.keyTag=`${rm.no}号室・${CARPET_NAMES[rm.colour]}の廊下`;
-  $('stamp').innerHTML+=`<br>KEY ${rm.no}・${CARPET_NAMES[rm.colour]}`;
+  msg('部屋の鍵が、どこかの廊下に落ちている。3体の「宿泊客」から逃げながら、鍵を拾え。',8);
+  G.keySeen=false;$('stamp').innerHTML+='<br>KEY ――';
   lockPtr();
 }
 function carpetAt(y){return G.cols[clamp(Math.floor((Math.floor(y)-D14Y0)/6),0,3)];}
@@ -1985,6 +1992,7 @@ function carpetAt(y){return G.cols[clamp(Math.floor((Math.floor(y)-D14Y0)/6),0,3
 function doorNear(x,y){let best=null,bd=.95;for(const d of G.doors){if(d.open)continue;const fx=d.x+.5,fy=d.fy+.5,dd=Math.hypot(D14X0+fx-x,D14Y0+fy-y);if(dd<bd){bd=dd;best=d;}}return best;}
 function hotelAction(){
   if(G.ps[G.me].status!=='alive')return false;const d=doorNear(G.p.x,G.p.y);if(!d)return false;
+  if(!G.key14.taken){msg('鍵がない。まず、廊下に落ちている鍵を探せ。',2.5);AU.click();return true;}
   if(d.real){AU.pickup();reachExit();return true;}
   if(isClient()){try{NET.conn.send({t:'door',i:d.i});}catch(e){}}else openWrong(d.i);
   return true;}
@@ -1993,7 +2001,21 @@ function openWrong(i){const d=G.doors[i];if(!d||d.open||d.real)return;d.open=tru
   const D=DIFF[diff];G.guests.push({x:D14X0+d.x+.5,y:D14Y0+d.fy+.5,a:0,door:i,t:10+4*D.spd,state:'out',repath:0,field:null,fk:''});}
 function updateGuests(dt){
   const D=DIFF[diff],act=alivePs();
-  for(const g of G.guests){g.repath-=dt;g.t-=dt;
+  if(!G.key14.taken)for(const o of act)if(Math.hypot(o.x-G.key14.x,o.y-G.key14.y)<.7)G.key14.taken=true;
+  for(const g of G.guests){g.repath-=dt;
+    if(g.perm){
+      // the three guests: wander the halls, chase whoever they see
+      let q=null,qd=1e9;for(const o of act){const d=Math.hypot(o.x-g.x,o.y-g.y);if(d<qd&&(d<1.2||(d<8*D.see&&los(g.x,g.y,o.x,o.y)))){q=o;qd=d;}}
+      if(q){g.state='chase';g.lx=q.x;g.ly=q.y;g.lost=3;}
+      else if(g.state==='chase'){g.lost-=dt;if(g.lost<=0||Math.hypot(g.lx-g.x,g.ly-g.y)<.4)g.state='walk';}
+      if(g.state==='chase')goP11(g,g.lx,g.ly,3.5*D.spd*dt);
+      else{g.wT-=dt;if(!g.tgt||g.wT<=0||Math.hypot(g.tgt[0]-g.x,g.tgt[1]-g.y)<.3){g.tgt=null;
+          for(let k=0;k<16;k++){const x=Math.floor(g.x)+rnd(17)-8,y=Math.floor(g.y)+rnd(17)-8;if(cellAt(x,y)===0){g.tgt=[x+.5,y+.5];break;}}
+          if(!g.tgt)g.tgt=[g.x,g.y];g.wT=8;}
+        goP11(g,g.tgt[0],g.tgt[1],1.5*D.spd*dt);}
+      for(const o of act)if(o.status==='alive'&&Math.hypot(o.x-g.x,o.y-g.y)<.55)playerDone(o.slot,'caught');
+      continue;}
+    g.t-=dt;
     if(g.t>0&&act.length){let q=null,qd=1e9;for(const o of act){const d=Math.hypot(o.x-g.x,o.y-g.y);if(d<qd){qd=d;q=o;}}
       goP11(g,q.x,q.y,(qd>14?5:3.4)*D.spd*dt);
       for(const o of act)if(o.status==='alive'&&Math.hypot(o.x-g.x,o.y-g.y)<.55)playerDone(o.slot,'caught');}
@@ -2002,6 +2024,9 @@ function updateGuests(dt){
 }
 // everyone: prompts, door sounds, footsteps of the guests
 function stage14Feedback(dt){
+  if(G.key14.taken&&!G.keySeen){G.keySeen=true;const rm=G.room;AU.pickup();
+    msg(`鍵を拾った！ タグ：「${rm.no}号室　${CARPET_NAMES[rm.colour]}のじゅうたんの廊下」　ほかのドアは開けるな。`,9);
+    G.keyTag=`${rm.no}号室・${CARPET_NAMES[rm.colour]}の廊下`;const st=$('stamp');st.innerHTML=st.innerHTML.replace('KEY ――',`KEY ${rm.no}・${CARPET_NAMES[rm.colour]}`);}
   const me=G.p,d=G.ps[G.me].status==='alive'?doorNear(me.x,me.y):null,pr=$('prompt');
   if(d){pr.textContent=`${d.no}号室を開ける [F]`;show('prompt',true);}else show('prompt',false);
   for(const o of G.doors)if(o.open&&!o.seen){o.seen=1;const dd=Math.hypot(D14X0+o.x+.5-me.x,D14Y0+o.fy+.5-me.y);
@@ -2170,6 +2195,7 @@ function netTick(dt){
   if(isHost()){const g=G.g;
     bc({t:'s',g:[+g.x.toFixed(2),+g.y.toFixed(2),+g.a.toFixed(2),g.state==='chase'?1:0,+g.chaseT.toFixed(2),g.wait>0?1:0,g.tslot],
       GU:G.stage===14?G.guests.map(m=>[+m.x.toFixed(2),+m.y.toFixed(2)]):null,
+      KY:G.stage===14&&G.key14.taken?1:0,
       DO:G.stage===14?G.doors.reduce((a,d)=>{if(d.open)a.push(d.i);return a;},[]):null,
       NU:G.stage===13?G.nurses.map(m=>[+m.x.toFixed(2),+m.y.toFixed(2),m.state[0]]):null,
       ST:G.stage===12?G.stalk.map(m=>[+m.x.toFixed(2),+m.y.toFixed(2),m.state[0]]):null,
@@ -2188,7 +2214,7 @@ function netTick(dt){
     try{NET.conn.send({t:'p',x:+p.x.toFixed(2),y:+p.y.toFixed(2),a:+p.a.toFixed(2),r:p.run?1:0,m:p.moving?1:0});}catch(e){}}
 }
 function applySnap(d){const g=G.g,s=d.g;
-  if(G.stage===14&&d.GU&&G.doors){G.guests=d.GU.map(v=>({x:v[0],y:v[1]}));if(d.DO)for(const i of d.DO)if(G.doors[i])G.doors[i].open=true;}
+  if(G.stage===14&&d.GU&&G.doors){G.guests=d.GU.map(v=>({x:v[0],y:v[1]}));if(d.KY)G.key14.taken=true;if(d.DO)for(const i of d.DO)if(G.doors[i])G.doors[i].open=true;}
   if(G.stage===13&&d.NU&&G.nurses)d.NU.forEach((v,i)=>{const m=G.nurses[i];if(m){m.x=v[0];m.y=v[1];m.state=v[2]==='c'?'chase':v[2]==='l'?'listen':'patrol';}});
   if(G.stage===12&&d.ST&&G.stalk){d.ST.forEach((v,i)=>{const m=G.stalk[i];if(m){m.x=v[0];m.y=v[1];m.state=v[2]==='c'?'chase':v[2]==='t'?'track':'wander';}});if(d.TP)G.temps=d.TP;}
   if(G.stage===11&&d.PG&&G.party){d.PG.forEach((v,i)=>{const m=G.party[i];if(m){m.x=v[0];m.y=v[1];m.state=v[2]==='c'?'chase':v[2]==='g'?'go':'walk';}});if(d.BP)for(const i of d.BP)if(G.balloons[i])G.balloons[i].p=1;}
@@ -2386,7 +2412,7 @@ function localEscape(){
   $('endT').textContent='EXIT';$('endT').className='';$('fear').style.opacity=0;show('hud',false);
   if(G.stage<14){
     $('endText').innerHTML=['','非常口を抜けた――はずだった。<br>足元に、冷たい鉄のレールが二本、闇の奥へ伸びている。','線路の果ての非常口を抜けた。<br>……世界が、平べったくなった気がする。',
-      'エレベーターは止まらずに、下へ、下へ。<br>扉が開くと、そこは真っ暗だった。','非常口の先は、コンクリートの長い廊下だった。<br>廊下の先に、何かが立っている。','扉の向こうは、白い廊下だった。<br>白い人たちが、こっちを向いて待っている。<br>――顔を、よく見てあげて。','最後の扉――のはずだった。<br>開けた先は、鏡だらけの部屋だった。','鏡の向こうは、コンクリートの地下駐車場だった。<br>遠くで、送電塔の唸る音がする。','スロープの先は、空の絵が描かれた大きな部屋だった。<br>遠くの壁の前に、大きな人形が立っている。','GOALの壁の向こうは、白いタイルと水の部屋だった。<br>水面に、何かの波紋が広がっている。','プールの扉の先は、明るい草原だった。<br>風船とパーティーの飾りが、風に揺れている。<br>遠くで、誰かが笑っている。','緑の扉を開けると、冷たい風が吹きこんできた。<br>一面の雪と、黒い木々。<br>振り返ると、扉はもう雪に埋もれていた。','山小屋の扉を開けると、消毒液の匂いがした。<br>ピッ……ピッ……と、心電図の音が聞こえる。<br>ここは、夜の病院だ。','非常口の先は、じゅうたんの敷かれたホテルの廊下だった。<br>手の中に、いつのまにか部屋の鍵がある。<br>鍵のタグには、部屋番号が書いてあった。'][G.stage];
+      'エレベーターは止まらずに、下へ、下へ。<br>扉が開くと、そこは真っ暗だった。','非常口の先は、コンクリートの長い廊下だった。<br>廊下の先に、何かが立っている。','扉の向こうは、白い廊下だった。<br>白い人たちが、こっちを向いて待っている。<br>――顔を、よく見てあげて。','最後の扉――のはずだった。<br>開けた先は、鏡だらけの部屋だった。','鏡の向こうは、コンクリートの地下駐車場だった。<br>遠くで、送電塔の唸る音がする。','スロープの先は、空の絵が描かれた大きな部屋だった。<br>遠くの壁の前に、大きな人形が立っている。','GOALの壁の向こうは、白いタイルと水の部屋だった。<br>水面に、何かの波紋が広がっている。','プールの扉の先は、明るい草原だった。<br>風船とパーティーの飾りが、風に揺れている。<br>遠くで、誰かが笑っている。','緑の扉を開けると、冷たい風が吹きこんできた。<br>一面の雪と、黒い木々。<br>振り返ると、扉はもう雪に埋もれていた。','山小屋の扉を開けると、消毒液の匂いがした。<br>ピッ……ピッ……と、心電図の音が聞こえる。<br>ここは、夜の病院だ。','非常口の先は、じゅうたんの敷かれたホテルの廊下だった。<br>自分の部屋の鍵を、どこかで落としてしまったらしい。<br>廊下の奥で、誰かの足音がする。'][G.stage];
     $('endStat').textContent=(isOnline()?'全員で ':'')+`STAGE ${G.stage+1} へ……`;
     show('endOv',true);$('retryBtn').hidden=true;return;}
   const best=!isOnline()&&saveBest(G.time);
@@ -2769,6 +2795,7 @@ function render3D(){
     else sp.push({x:it.x,y:it.y,w:.3,h0:0,h1:.22,tex:NOTE,glow:G.stage===6?.3:.1});}
   for(const sh of G.shriekers||[])sp.push({x:sh.x,y:sh.y,w:.75,h0:0,h1:.6,tex:SHRIEK,glow:.04+sh.pulse*.2});
   if(G.stage===14){for(const d of G.doors){const wx=D14X0+d.x+.5,wy=D14Y0+(d.fy>d.y?d.y+1.2:d.y-.2);if(Math.abs(wx-p.x)<14&&Math.abs(wy-p.y)<14)sp.push({x:wx,y:wy,w:.38,h0:.62,h1:.84,tex:numTex(d.no),glow:.15});}
+    if(G.key14&&!G.key14.taken)sp.push({x:G.key14.x,y:G.key14.y,w:.4,h0:.05+Math.sin(t*2)*.03,h1:.4+Math.sin(t*2)*.03,tex:KEY14,glow:.5});
     for(const m of G.guests||[])sp.push({x:m.x,y:m.y,w:.6,h0:0,h1:1.12,tex:GUEST,glow:.05});}
   if(G.stage===13){for(const b of G.beds)if(Math.abs(b.x-p.x)<16&&Math.abs(b.y-p.y)<16)sp.push({x:b.x,y:b.y,w:1.4,h0:0,h1:.6,tex:BED,glow:0});
     for(const m of G.nurses||[])sp.push({x:m.x,y:m.y,w:.6,h0:0,h1:1.1,tex:NURSE,glow:.05});}
@@ -2920,6 +2947,7 @@ function renderTop(){
   for(const sh of G.shriekers||[]){o.glow=.04+sh.pulse*.25;drawTop(sh.x,sh.y,.85,SHRIEK,0,o);}
   const tags=[];
   if(G.stage===14){for(const d of G.doors){const wx=D14X0+d.x+.5,wy=D14Y0+(d.fy>d.y?d.y-.55:d.y+1.55);if(Math.abs(wx-cam.x)<W/Z&&Math.abs(wy-cam.y)<H/Z)drawTop(wx,wy,1.1,numTex(d.no),0,{noff,grain,glow:.2,always:true});}
+    if(G.key14&&!G.key14.taken)drawTop(G.key14.x,G.key14.y,.8,KEY14,t,{noff,grain,glow:.5,always:true});
     for(const m of G.guests||[])drawTop(m.x,m.y,1.4,GUEST,0,{noff,grain,glow:.05});}
   if(G.stage===13){for(const b of G.beds)if(Math.abs(b.x-cam.x)<W/Z&&Math.abs(b.y-cam.y)<H/Z)drawTop(b.x,b.y,1.7,BED_TOP,0,{noff,grain,glow:0});
     for(const m of G.nurses||[])drawTop(m.x,m.y,1.4,NURSE,0,{noff,grain,glow:.05});}
