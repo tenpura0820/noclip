@@ -194,6 +194,7 @@ h1{font-family:var(--vhs);font-weight:400;font-size:clamp(56px,14vw,104px);margi
       <button data-st="10" aria-pressed="false">10</button>
       <button data-st="11" aria-pressed="false">11</button>
       <button data-st="12" aria-pressed="false">12</button>
+      <button data-st="13" aria-pressed="false">13</button>
     </div>
     <div class="diff" role="group" aria-label="視点">
       <button data-v="top" aria-pressed="true">見下ろし</button>
@@ -448,7 +449,7 @@ function chunk(rx,ry){const k=rx*8192+ry;let c=CH.get(k);
 const FR=3,FX0=(R0-FR)*P,FX1=(R0+FR+1)*P;let FIN=false;
 const inMap=(x,y)=>!FIN||(x>FX0&&x<FX1&&y>FX0&&y<FX1);
 const WALLV=()=>STAGE===4?9:STAGE===6?12:STAGE===7?13:STAGE===10?21:1;
-function cellAt(x,y){x=Math.floor(x);y=Math.floor(y);if(STAGE===12)return field12(x,y);if(STAGE===11)return field11(x,y);if(STAGE===9)return hall9(x,y);if(STAGE===8)return garageCell(x,y);if(STAGE===2)return tunnelCell(x,y);if(STAGE===5)return hallCell(x,y);if(FIN&&(x<=FX0||x>=FX1||y<=FX0||y>=FX1))return WALLV();
+function cellAt(x,y){x=Math.floor(x);y=Math.floor(y);if(STAGE===13)return hosp13(x,y);if(STAGE===12)return field12(x,y);if(STAGE===11)return field11(x,y);if(STAGE===9)return hall9(x,y);if(STAGE===8)return garageCell(x,y);if(STAGE===2)return tunnelCell(x,y);if(STAGE===5)return hallCell(x,y);if(FIN&&(x<=FX0||x>=FX1||y<=FX0||y>=FX1))return WALLV();
   const rx=Math.floor(x/P),ry=Math.floor(y/P),v=chunk(rx,ry)[(y-ry*P)*P+(x-rx*P)];return v===1?WALLV():v;}
 function setCell(x,y,v){const rx=Math.floor(x/P),ry=Math.floor(y/P);chunk(rx,ry)[(y-ry*P)*P+(x-rx*P)]=v;}
 const open=v=>v===0||v===5;
@@ -577,7 +578,7 @@ function trainFeedback(dt){
   else{AU.set(AU.trG,0);AU.set(AU.scG,0);}
 }
 function showBanner(t){const s=$('spotted');s.textContent=t;s.classList.remove('on');void s.offsetWidth;s.classList.add('on');}
-function startStage(n){if(n===12)startStage12();else if(n===11)startStage11();else if(n===10)startStage10();else if(n===9)startStage9();else if(n===8)startStage8();else if(n===7)startStage7();else if(n===6)startStage6();else if(n===5)startStage5();else if(n===4)startStage4();else if(n===3)startStage3();else startStage2();writeSave();refreshLoad();}
+function startStage(n){if(n===13)startStage13();else if(n===12)startStage12();else if(n===11)startStage11();else if(n===10)startStage10();else if(n===9)startStage9();else if(n===8)startStage8();else if(n===7)startStage7();else if(n===6)startStage6();else if(n===5)startStage5();else if(n===4)startStage4();else if(n===3)startStage3();else startStage2();writeSave();refreshLoad();}
 function startStage2(){
   if(!G)return;
   clearPoke();show('scare',false);document.body.classList.remove('shake');show('endOv',false);show('pauseOv',false);show('noteOv',false);
@@ -1795,6 +1796,115 @@ function stage12Feedback(dt){
   if(fd2<6&&Math.random()<dt*8)AU.noise(.04,2500,2,.12*(1-fd2/6),'bandpass');
   if(state==='play')drawSnow(dt);
 }
+/* ---------- stage 13: the hospital ---------- */
+// A night ward: rooms of beds joined by doorways, the beep of a heart monitor everywhere.
+// The nurses hear running feet from far away and come to look; they see whoever is in the open.
+// Under a bed nobody can see or hear you. The way out is the emergency door in the far wall.
+const D13W=61,D13H=41;let D13X0=0,D13Y0=0,EX13=0;
+T[25]=mkTex(g=>{g.fillStyle='#e9ece6';g.fillRect(0,0,64,64);g.fillStyle='#9fc2ad';g.fillRect(0,36,64,28);
+  g.fillStyle='#b9bdb8';g.fillRect(0,32,64,4);g.fillStyle='#d4d8d2';g.fillRect(0,33,64,1);g.fillStyle='#7d9f8a';g.fillRect(0,60,64,4);grit(g,10);});
+const WTOP13=mkTex(g=>{g.fillStyle='#cfd6cf';g.fillRect(0,0,64,64);g.strokeStyle='rgba(110,140,120,.6)';g.strokeRect(1.5,1.5,61,61);grit(g,6);});
+const CEIL13=mkTex(g=>{g.fillStyle='#dfe6ef';g.fillRect(0,0,64,64);g.fillStyle='#bcc6d2';g.fillRect(0,0,64,1);g.fillRect(0,0,1,64);g.fillRect(0,32,64,1);g.fillRect(32,0,1,64);for(let i=0;i<120;i++){g.fillStyle='rgba(120,130,150,.25)';g.fillRect(rnd(64),rnd(64),1,1);}});
+const FLOOR13=mkTex(g=>{for(let y=0;y<2;y++)for(let x=0;x<2;x++){g.fillStyle=(x+y)&1?'#b7c4bb':'#cdd6cf';g.fillRect(x*32,y*32,32,32);}
+  for(let i=0;i<200;i++){g.fillStyle='rgba(90,100,95,.15)';g.fillRect(rnd(64),rnd(64),1,1);}grit(g,6);});
+function nursePic(g){
+  g.fillStyle='#f2f2ee';g.beginPath();g.moveTo(24,22);g.lineTo(40,22);g.lineTo(46,54);g.lineTo(18,54);g.closePath();g.fill();
+  g.fillRect(18,24,5,20);g.fillRect(41,24,5,20);
+  g.fillStyle='#d9cfc4';g.fillRect(24,54,5,10);g.fillRect(35,54,5,10);g.fillRect(18,44,5,4);g.fillRect(41,44,5,4);
+  g.fillStyle='#111';g.beginPath();g.ellipse(32,13,8,10,0,0,7);g.fill();g.fillRect(24,13,16,14);
+  g.fillStyle='#e8e0d6';g.beginPath();g.ellipse(32,14,5,7,0,0,7);g.fill();
+  g.fillStyle='#111';g.fillRect(27,9,4,14);g.fillRect(34,8,3,16);
+  g.fillStyle='#8a1010';g.fillRect(30,18,4,2);
+  g.fillStyle='#f7f7f3';g.fillRect(25,2,14,5);g.fillStyle='#d42a2a';g.fillRect(31,3,2,3);g.fillRect(30,4,4,1);
+  g.fillStyle='#c9c9c4';g.fillRect(44,40,1,8);g.fillStyle='#e6e6e6';g.fillRect(44,38,1,3);
+}
+const NURSE=mkTex(nursePic);
+const BED=mkTex(g=>{g.fillStyle='#8d949a';g.fillRect(2,40,60,4);g.fillRect(4,44,3,20);g.fillRect(57,44,3,20);g.fillRect(2,20,3,24);
+  g.fillStyle='#eef1f3';g.fillRect(5,30,57,11);g.fillStyle='#dfe4e8';g.fillRect(5,28,14,6);g.fillStyle='#b9c7d4';g.fillRect(20,30,42,3);
+  g.fillStyle='rgba(0,0,0,.35)';g.fillRect(7,44,50,20);});
+const BED_TOP=mkTex(g=>{g.fillStyle='#8d949a';g.fillRect(2,14,60,36);g.fillStyle='#eef1f3';g.fillRect(4,16,56,32);g.fillStyle='#dde3e8';g.fillRect(6,19,12,26);g.fillStyle='#b9c7d4';g.fillRect(22,16,38,32);});
+function hosp13(x,y){x-=D13X0;y-=D13Y0;
+  if(x<0||y<0||x>=D13W||y>=D13H)return 25;
+  if(x===D13W-1)return y===EX13?5:25;
+  if(x===0||y===0||y===D13H-1)return 25;
+  const vx=x%12===0,hy=y%8===0;
+  if(vx&&hy)return 25;
+  // every wall between two rooms has a doorway two cells wide
+  if(vx){const j=(y/8)|0,gy=8*j+1+Math.floor(hash(x,j,1301)*5);return y===gy||y===gy+1?0:25;}
+  if(hy){const i=(x/12)|0,gx=12*i+1+Math.floor(hash(i,y,1302)*9);return x===gx||x===gx+1?0:25;}
+  return 0;}
+const underBed=(x,y)=>G.beds&&G.beds.some(b=>Math.abs(x-b.x)<.8&&Math.abs(y-b.y)<.45);
+function layoutStage13(){
+  const r=mulberry(SEED^0x13b0d1);
+  EX13=8*Math.floor(r()*5)+4;
+  G.exitPos={x:D13X0+D13W-1,y:D13Y0+EX13};G.exit={x:G.exitPos.x+.5,y:G.exitPos.y+.5};
+  // beds along the top and bottom of each room, kept clear of the doorways
+  G.beds=[];
+  for(let j=0;j<5;j++)for(let i=0;i<5;i++)for(const row of[1.5,6.5]){
+    for(let k=0;k<5;k++){if(r()<.45)continue;const bx=12*i+2+k*2,by=8*j+row,cx=D13X0+bx,cy=D13Y0+Math.floor(by);
+      if(hosp13(cx,cy+(row<4?-1:1))===0||hosp13(cx+1,cy+(row<4?-1:1))===0)continue;
+      G.beds.push({x:cx+.5,y:D13Y0+by});}}
+  G.nurses=[];
+  const spots=[];for(let j=0;j<5;j++)for(let i=2;i<5;i++)spots.push([i,j]);
+  for(let n=0;n<3&&spots.length;n++){const[i,j]=spots.splice(Math.floor(r()*spots.length),1)[0];
+    G.nurses.push({x:D13X0+12*i+6.5,y:D13Y0+8*j+4.5,a:0,state:'patrol',tgt:null,wT:0,repath:0,field:null,fk:'',lost:0,lx:0,ly:0,hT:0,seenS:'patrol'});}
+}
+function startStage13(){
+  if(!G)return;
+  clearPoke();show('scare',false);document.body.classList.remove('shake');show('endOv',false);show('pauseOv',false);show('noteOv',false);hideS3UI();
+  $('msg').classList.remove('show');msgT=0;
+  STAGE=13;LMV=.58;FIN=false;SEED=(SEED^0x0b0013)|0;CH=new Map();
+  D13X0=Math.floor(START)-2;D13Y0=Math.floor(START)-20;
+  G.stage=13;G.over=false;G.toStage2=false;G.results=null;G.enraged=false;G.train=null;G.s3=null;G.s5=null;G.arrows=[];G.shriekers=[];G.mobs=[];G.fakes=[];G.suits=[];G.shadows=[];G.lights=null;G.rl=null;G.doll=null;G.fixed=[];G.swimmers=[];G.ripples=[];G.party=[];G.balloons=[];G.stalk=[];G.fires=[];G.prints=[];
+  G.taken=new Set();G.ltaken=new Set(['start']);layoutStage13();
+  for(const q of G.ps)if(q){q.status='alive';q.x=q.dx=D13X0+3.5+(q.slot&3)*1.4;q.y=q.dy=D13Y0+20.5+((q.slot&4)?1.2:-.6);q.time=0;}
+  const me=G.ps[G.me];Object.assign(G.p,{x:me.x,y:me.y,a:0,pitch:0,stam:100,exh:false,bob:0});
+  Object.assign(G.g,{wait:1e9,state:'wander',tslot:-1});
+  try{view=localStorage.getItem('noclip_view')||'top';}catch(e){}
+  $('slots').parentNode.hidden=true;
+  $('stamp').innerHTML=(isOnline()?`ONLINE ${G.ps.filter(Boolean).length}P`:'SP')+'　STAGE 13<br>OCT.11 1996';
+  state='play';show('hud',true);setTouchUI(true);
+  const c=$('stageCard');c.innerHTML='<b>STAGE 13</b><span>― 病院 ―</span>';c.classList.remove('on');void c.offsetWidth;c.classList.add('on');
+  msg('夜の病院。走るとナースに聞こえる。見つかったらベッドの下へ。奥の非常口を目指せ。',7);
+  G.bedIn=false;
+  lockPtr();
+}
+// host / single player
+function updateNurses(dt){
+  const D=DIFF[diff],act=alivePs();if(!act.length)return;
+  const hid=o=>underBed(o.x,o.y);
+  for(const n of G.nurses){n.repath-=dt;
+    let q=null,qd=1e9;
+    for(const o of act){if(hid(o))continue;const d=Math.hypot(o.x-n.x,o.y-n.y);if(d<qd&&(d<1.2||(d<7*D.see&&los(n.x,n.y,o.x,o.y)))){q=o;qd=d;}}
+    if(q){n.state='chase';n.lx=q.x;n.ly=q.y;n.lost=3;}
+    else{
+      // footsteps: running carries far, walking only right next to her
+      let h=null,hd=1e9;
+      for(const o of act){if(hid(o)||!o.moving)continue;const d=Math.hypot(o.x-n.x,o.y-n.y),rad=(o.run?11:2.2)*D.see;if(d<rad&&d<hd){hd=d;h=o;}}
+      if(n.state==='chase'){n.lost-=dt;if(n.lost<=0||Math.hypot(n.lx-n.x,n.ly-n.y)<.4){n.state='listen';n.hT=4;}}
+      if(h&&n.state!=='chase'){n.state='listen';n.lx=h.x;n.ly=h.y;n.hT=6;}
+      if(n.state==='listen'){n.hT-=dt;if(n.hT<=0)n.state='patrol';}}
+    if(n.state==='chase')goP11(n,n.lx,n.ly,3.7*D.spd*dt);
+    else if(n.state==='listen'){if(Math.hypot(n.lx-n.x,n.ly-n.y)>.4)goP11(n,n.lx,n.ly,3*D.spd*dt);}
+    else{n.wT-=dt;
+      if(!n.tgt||n.wT<=0||Math.hypot(n.tgt[0]-n.x,n.tgt[1]-n.y)<.3){n.tgt=null;
+        for(let k=0;k<12;k++){const x=Math.floor(n.x)+rnd(15)-7,y=Math.floor(n.y)+rnd(15)-7;if(cellAt(x,y)===0){n.tgt=[x+.5,y+.5];break;}}
+        if(!n.tgt)n.tgt=[n.x,n.y];n.wT=7;}
+      goP11(n,n.tgt[0],n.tgt[1],1.2*D.spd*dt);}
+    for(const o of act)if(o.status==='alive'&&!hid(o)&&Math.hypot(o.x-n.x,o.y-n.y)<.55)playerDone(o.slot,'caught');
+  }
+}
+// everyone: the heart monitor, hiding, alarms
+function stage13Feedback(dt){
+  const me=G.p;let nn=1e9,chase=1e9;
+  for(const n of G.nurses){const d=Math.hypot(n.x-me.x,n.y-me.y);nn=Math.min(nn,d);if(n.state==='chase')chase=Math.min(chase,d);
+    if(n.state!==n.seenS){if(n.state==='chase'&&d<12){AU.stinger();msg('ナースに見つかった！ ベッドの下へ！',2.5);}n.seenS=n.state;}}
+  G.ecgT=(G.ecgT||0)-dt;
+  if(G.ecgT<=0){G.ecgT=nn<10?.3+.7*nn/10:1;AU.tone(1000,.07,.05,'sine');}
+  const inBed=underBed(me.x,me.y);
+  if(inBed&&!G.bedIn)msg('ベッドの下に隠れた。ここなら見つからない。',2);G.bedIn=inBed;
+  $('fear').style.opacity=Math.max(+$('fear').style.opacity||0,inBed?.4:0,chase<8?.15+.45*(1-chase/8):0);
+}
 /* ---------- story ---------- */
 const NOTES=[
   {h:'拾った紙切れ',p:'あれは目がいい。見通しのいい部屋では、遠くから見つかる。\n壁や柱の陰を歩け。\n走れば足音で気づかれる。\n床の赤い矢印は嘘をつく。出口は、矢印の反対にある。\n\n低い唸り声が聞こえたら、近くにいる。'},
@@ -1952,6 +2062,7 @@ function netTick(dt){
   netAcc+=dt;if(netAcc<1/15)return;netAcc=0;
   if(isHost()){const g=G.g;
     bc({t:'s',g:[+g.x.toFixed(2),+g.y.toFixed(2),+g.a.toFixed(2),g.state==='chase'?1:0,+g.chaseT.toFixed(2),g.wait>0?1:0,g.tslot],
+      NU:G.stage===13?G.nurses.map(m=>[+m.x.toFixed(2),+m.y.toFixed(2),m.state[0]]):null,
       ST:G.stage===12?G.stalk.map(m=>[+m.x.toFixed(2),+m.y.toFixed(2),m.state[0]]):null,
       TP:G.stage===12?G.temps:null,
       PG:G.stage===11?G.party.map(m=>[+m.x.toFixed(2),+m.y.toFixed(2),m.state[0]]):null,
@@ -1968,6 +2079,7 @@ function netTick(dt){
     try{NET.conn.send({t:'p',x:+p.x.toFixed(2),y:+p.y.toFixed(2),a:+p.a.toFixed(2),r:p.run?1:0,m:p.moving?1:0});}catch(e){}}
 }
 function applySnap(d){const g=G.g,s=d.g;
+  if(G.stage===13&&d.NU&&G.nurses)d.NU.forEach((v,i)=>{const m=G.nurses[i];if(m){m.x=v[0];m.y=v[1];m.state=v[2]==='c'?'chase':v[2]==='l'?'listen':'patrol';}});
   if(G.stage===12&&d.ST&&G.stalk){d.ST.forEach((v,i)=>{const m=G.stalk[i];if(m){m.x=v[0];m.y=v[1];m.state=v[2]==='c'?'chase':v[2]==='t'?'track':'wander';}});if(d.TP)G.temps=d.TP;}
   if(G.stage===11&&d.PG&&G.party){d.PG.forEach((v,i)=>{const m=G.party[i];if(m){m.x=v[0];m.y=v[1];m.state=v[2]==='c'?'chase':v[2]==='g'?'go':'walk';}});if(d.BP)for(const i of d.BP)if(G.balloons[i])G.balloons[i].p=1;}
   if(G.stage===10&&d.SW&&G.swimmers)d.SW.forEach((v,i)=>{const o=G.swimmers[i];if(o){o.x=v[0];o.y=v[1];o.state=v[2]==='h'?'hunt':'lurk';}});
@@ -2044,7 +2156,7 @@ const tc=t=>[t/3600,t/60%60,t%60].map(v=>String(Math.floor(v)).padStart(2,'0')).
 // save slots: an auto checkpoint plus three slots you pick; a save is the start of the stage you were on
 const SLOTS=['auto','1','2','3'],slotName=k=>k==='auto'?'オート':'データ'+k;
 const slotKey=k=>'noclip_save_'+k;
-function okSave(v){return v&&v.stage>=1&&v.stage<=12&&v.diff>=0&&v.diff<=2?v:null;}
+function okSave(v){return v&&v.stage>=1&&v.stage<=13&&v.diff>=0&&v.diff<=2?v:null;}
 function readSlot(k){try{return okSave(JSON.parse(localStorage.getItem(slotKey(k))||'null'));}catch(e){return null;}}
 try{const old=localStorage.getItem('noclip_save');if(old&&!localStorage.getItem(slotKey('1')))localStorage.setItem(slotKey('1'),old);localStorage.removeItem('noclip_save');}catch(e){}
 function curSave(){return{stage:G.stage,diff,time:Math.floor(G.time),at:Date.now()};}
@@ -2112,7 +2224,7 @@ function toTitle(){hideS3UI();
 function openNote(id){const n=typeof id==='object'?id:NOTES[id];state='note';AU.page();$('noteH').textContent=n.h;$('noteP').textContent=n.p;show('noteOv',true);if(!isOnline())AU.silence();if(document.pointerLockElement)document.exitPointerLock();}
 function closeNote(){if(state!=='note')return;show('noteOv',false);state='play';last=performance.now();lockPtr();}
 // pick where a fresh game begins (4 = right after Sonic.exe); remembered per browser
-let startStageSel=1;try{const v=+localStorage.getItem('noclip_startstage');if(v>=1&&v<=12)startStageSel=v;}catch(e){}
+let startStageSel=1;try{const v=+localStorage.getItem('noclip_startstage');if(v>=1&&v<=13)startStageSel=v;}catch(e){}
 function setStartStage(n){startStageSel=n;try{localStorage.setItem('noclip_startstage',n);}catch(e){}
   document.querySelectorAll('[data-st]').forEach(b=>{b.setAttribute('aria-pressed',+b.dataset.st===n);if(b.dataset.st==='1')b.textContent=n===1?'STAGE 1から':'1';else b.textContent=+b.dataset.st===n?`STAGE ${n}から`:b.dataset.st;});}
 document.querySelectorAll('[data-st]').forEach(b=>b.addEventListener('click',()=>setStartStage(+b.dataset.st)));setStartStage(startStageSel);
@@ -2136,7 +2248,7 @@ function playerDone(slot,st){   // host or single player only
   if(isHost())bc({t:'done',slot,st});
   applyDone(slot,st);
   // the first one out of stage 1 drags everybody (even the caught) onto the tracks
-  if(G.stage<12&&st==='escaped'&&!G.toStage2){G.toStage2=true;G.over=true;const g0=G,n=G.stage+1;
+  if(G.stage<13&&st==='escaped'&&!G.toStage2){G.toStage2=true;G.over=true;const g0=G,n=G.stage+1;
     if(isHost())bc({t:'stagesoon',name:q.name});
     setTimeout(()=>{if(G!==g0||G.stage!==n-1)return;if(isHost())bc({t:'stage',n});startStage(n);},3000);return;}
   if(G.toStage2)return;
@@ -2161,13 +2273,13 @@ function endScreenButtons(){
 function localEscape(){
   state='end';AU.silence();setTouchUI(false);if(document.pointerLockElement)document.exitPointerLock();placeLabels([]);
   $('endT').textContent='EXIT';$('endT').className='';$('fear').style.opacity=0;show('hud',false);
-  if(G.stage<12){
+  if(G.stage<13){
     $('endText').innerHTML=['','非常口を抜けた――はずだった。<br>足元に、冷たい鉄のレールが二本、闇の奥へ伸びている。','線路の果ての非常口を抜けた。<br>……世界が、平べったくなった気がする。',
-      'エレベーターは止まらずに、下へ、下へ。<br>扉が開くと、そこは真っ暗だった。','非常口の先は、コンクリートの長い廊下だった。<br>廊下の先に、何かが立っている。','扉の向こうは、白い廊下だった。<br>白い人たちが、こっちを向いて待っている。<br>――顔を、よく見てあげて。','最後の扉――のはずだった。<br>開けた先は、鏡だらけの部屋だった。','鏡の向こうは、コンクリートの地下駐車場だった。<br>遠くで、送電塔の唸る音がする。','スロープの先は、空の絵が描かれた大きな部屋だった。<br>遠くの壁の前に、大きな人形が立っている。','GOALの壁の向こうは、白いタイルと水の部屋だった。<br>水面に、何かの波紋が広がっている。','プールの扉の先は、明るい草原だった。<br>風船とパーティーの飾りが、風に揺れている。<br>遠くで、誰かが笑っている。','緑の扉を開けると、冷たい風が吹きこんできた。<br>一面の雪と、黒い木々。<br>振り返ると、扉はもう雪に埋もれていた。'][G.stage];
+      'エレベーターは止まらずに、下へ、下へ。<br>扉が開くと、そこは真っ暗だった。','非常口の先は、コンクリートの長い廊下だった。<br>廊下の先に、何かが立っている。','扉の向こうは、白い廊下だった。<br>白い人たちが、こっちを向いて待っている。<br>――顔を、よく見てあげて。','最後の扉――のはずだった。<br>開けた先は、鏡だらけの部屋だった。','鏡の向こうは、コンクリートの地下駐車場だった。<br>遠くで、送電塔の唸る音がする。','スロープの先は、空の絵が描かれた大きな部屋だった。<br>遠くの壁の前に、大きな人形が立っている。','GOALの壁の向こうは、白いタイルと水の部屋だった。<br>水面に、何かの波紋が広がっている。','プールの扉の先は、明るい草原だった。<br>風船とパーティーの飾りが、風に揺れている。<br>遠くで、誰かが笑っている。','緑の扉を開けると、冷たい風が吹きこんできた。<br>一面の雪と、黒い木々。<br>振り返ると、扉はもう雪に埋もれていた。','山小屋の扉を開けると、消毒液の匂いがした。<br>ピッ……ピッ……と、心電図の音が聞こえる。<br>ここは、夜の病院だ。'][G.stage];
     $('endStat').textContent=(isOnline()?'全員で ':'')+`STAGE ${G.stage+1} へ……`;
     show('endOv',true);$('retryBtn').hidden=true;return;}
   const best=!isOnline()&&saveBest(G.time);
-  $('endText').innerHTML='山小屋の扉を閉めると、吹雪の音が遠くなった。<br>暖炉の火の前で目を覚ますと、そこは自分の部屋だった。<br>窓の外の雪に、足跡がひと筋。……扉の前で、止まっている。';
+  $('endText').innerHTML='非常口の先は、明け方の病院の駐車場だった。<br>ポケットに、見覚えのない診察券が入っている。<br>次の予約日は――今日の夜だった。';
   $('endStat').textContent=`${DIFF[diff].name}　脱出時間 ${fmt(G.time)}${best?'　最速記録！':''}`;
   show('endOv',true);endScreenButtons();
 }
@@ -2282,6 +2394,7 @@ function jumpscare(){
       else if(STAGE===2){g.scale(s/40,s/40);g.translate(-32,-34);trainFace(g);}
       else if(STAGE===4){g.scale(s/40,s/40);g.translate(-32,-30);roomkerPic(g);}
       else if(STAGE===5){g.scale(s/36,s/36);g.translate(-32,-16);statuePic(g);}
+      else if(STAGE===13){g.scale(s/34,s/34);g.translate(-32,-14);nursePic(g);}
       else if(STAGE===12){g.fillStyle='rgba(225,232,240,.5)';g.fillRect(-s,-s,2*s,2*s);g.scale(s/40,s/40);g.translate(-32,-12);stalkPic(g);}
       else if(STAGE===11){g.scale(s/34,s/34);g.translate(-32,-16);partyPic(g,true);}
       else if(STAGE===10){g.fillStyle='rgba(40,120,150,.6)';g.fillRect(-s,-s,2*s,2*s);g.scale(s/30,s/30);g.translate(-32,-30);shadowPic(g);}
@@ -2298,7 +2411,7 @@ function jumpscare(){
       g.fillStyle='#000';g.fillRect(0,h*.42,w,h*.16);g.fillStyle='#fff';g.font=`${Math.round(h*.08)}px DotGothic16, monospace`;g.textAlign='center';g.textBaseline='middle';g.fillText('NO SIGNAL',w/2,h/2);
       AU.tone(1000,.9,.12,'sine');
       setTimeout(()=>{if(state!=='end')return;show('scare',false);$('endT').textContent='信号途絶';$('endT').className='dead';
-        $('endText').innerHTML=STAGE===12?((G.temps&&G.temps[G.me]<=.5)?'指先の感覚が消えて、膝から雪に沈んだ。<br>吹雪が、すぐにあなたを白く埋めた。<br>その上を、細長い足跡が通りすぎていく。':'足跡の先に、白くて細長いものが立っていた。<br>長い腕が、ゆっくりと伸びてきた。<br>雪の上の足跡は、そこで途切れている。'):STAGE===11?'たくさんの笑顔に囲まれて、風船を手渡された。<br>「パーティーへようこそ =)」<br>……もう、ここから出たいとは思わない。':STAGE===10?'足首をつかまれ、水の中に引きずり込まれた。<br>水面の波紋は、すぐに消えた。':STAGE===9?'乾いた音がひとつ。<br>人形は、また壁のほうを向いて歌い始めた。':STAGE===8?'暗闇の中で、目と口だけが笑った。<br>次に明かりがついたとき、そこには誰もいなかった。':STAGE===7?'白い化物は、脱ぎ捨てた服の代わりに、あなたを着た。<br>鏡の中を、あなたの姿をした何かが歩いていく。':STAGE===6?'白い腕が、肩をつかんだ。<br>最後に見たのは、真っ黒な口の奥だった。':STAGE===5?'首の後ろで、乾いた音がした。<br>まばたきをした覚えは、ない。':STAGE===4?'耳元で、湿った息の音がした。<br>あれには、最初から全部聞こえていた。':STAGE===3?'赤い目が、すぐ目の前で笑った。<br>「Good show.」':STAGE===2?'赤い車体と無数の脚が、視界を埋め尽くした。<br>レールの上に、カメラだけが転がっている。':'最後に映っていたのは、湿ったカーペットの上を<br>引きずられていく視界だった。<br>テープは、まだ回り続けている。';
+        $('endText').innerHTML=STAGE===13?'ナースが、やさしく手首をつかんだ。<br>「検温の時間ですよ」<br>……心電図の音が、ピーーーと長く鳴った。':STAGE===12?((G.temps&&G.temps[G.me]<=.5)?'指先の感覚が消えて、膝から雪に沈んだ。<br>吹雪が、すぐにあなたを白く埋めた。<br>その上を、細長い足跡が通りすぎていく。':'足跡の先に、白くて細長いものが立っていた。<br>長い腕が、ゆっくりと伸びてきた。<br>雪の上の足跡は、そこで途切れている。'):STAGE===11?'たくさんの笑顔に囲まれて、風船を手渡された。<br>「パーティーへようこそ =)」<br>……もう、ここから出たいとは思わない。':STAGE===10?'足首をつかまれ、水の中に引きずり込まれた。<br>水面の波紋は、すぐに消えた。':STAGE===9?'乾いた音がひとつ。<br>人形は、また壁のほうを向いて歌い始めた。':STAGE===8?'暗闇の中で、目と口だけが笑った。<br>次に明かりがついたとき、そこには誰もいなかった。':STAGE===7?'白い化物は、脱ぎ捨てた服の代わりに、あなたを着た。<br>鏡の中を、あなたの姿をした何かが歩いていく。':STAGE===6?'白い腕が、肩をつかんだ。<br>最後に見たのは、真っ黒な口の奥だった。':STAGE===5?'首の後ろで、乾いた音がした。<br>まばたきをした覚えは、ない。':STAGE===4?'耳元で、湿った息の音がした。<br>あれには、最初から全部聞こえていた。':STAGE===3?'赤い目が、すぐ目の前で笑った。<br>「Good show.」':STAGE===2?'赤い車体と無数の脚が、視界を埋め尽くした。<br>レールの上に、カメラだけが転がっている。':'最後に映っていたのは、湿ったカーペットの上を<br>引きずられていく視界だった。<br>テープは、まだ回り続けている。';
         if(isOnline()&&G.stage===1)$('endText').innerHTML+='<br>――誰かが脱出できれば、まだ終わりじゃない。';
         $('endStat').textContent=`${DIFF[diff].name}　STAGE ${G.stage}　記録時間 ${tc(G.ps[G.me].time||G.time)}`;show('endOv',true);$('fear').style.opacity=0;endScreenButtons();},1200);
     }})(t0);
@@ -2345,7 +2458,7 @@ function localUpdate(dt,frozen){
   const wantRun=(keys.ShiftLeft||keys.ShiftRight||touchRun)&&p.moving&&fwd&&!frozen;
   p.run=wantRun&&!p.exh&&p.stam>0;
   if(p.run){p.stam-=30*dt;if(p.stam<=0){p.stam=0;p.exh=true;msg('息が……続かない……',2);}}else{p.stam=Math.min(100,p.stam+(p.moving?12:20)*dt);if(p.exh&&p.stam>35)p.exh=false;}
-  const spd=(p.run?5.0:p.exh?2.0:3.0)*dt*(STAGE===10&&water10(p.x,p.y)?.55:1)*(STAGE===12?.85:1);
+  const spd=(p.run?5.0:p.exh?2.0:3.0)*dt*(STAGE===10&&water10(p.x,p.y)?.55:1)*(STAGE===12?.85:1)*(STAGE===13&&underBed(p.x,p.y)?.5:1);
   const vx=mvx*spd,vy=mvy*spd,R=.22;
   if(!blocked(p.x+vx,p.y,R))p.x+=vx;else if(hitsDoor(p.x+vx,p.y,R))doorBump();
   if(!blocked(p.x,p.y+vy,R))p.y+=vy;else if(hitsDoor(p.x,p.y+vy,R))doorBump();
@@ -2360,7 +2473,7 @@ function localUpdate(dt,frozen){
     if(G.tal>=G.need)continue;
     if(isClient()){if(!G.pend.has(it.key)){G.pend.add(it.key);try{NET.conn.send({t:'pick',key:it.key});}catch(e){}}}
     else hostPick(G.me,it.key);}
-  if(G.stage===2)trainFeedback(dt);else if(G.stage===4)stage4Feedback(dt);else if(G.stage===5)stage5Feedback(dt);else if(G.stage===8)stage8Feedback(dt);else if(G.stage===9)stage9Feedback(dt);else if(G.stage===10)stage10Feedback(dt);else if(G.stage===11)stage11Feedback(dt);else if(G.stage===12)stage12Feedback(dt);
+  if(G.stage===2)trainFeedback(dt);else if(G.stage===4)stage4Feedback(dt);else if(G.stage===5)stage5Feedback(dt);else if(G.stage===8)stage8Feedback(dt);else if(G.stage===9)stage9Feedback(dt);else if(G.stage===10)stage10Feedback(dt);else if(G.stage===11)stage11Feedback(dt);else if(G.stage===12)stage12Feedback(dt);else if(G.stage===13)stage13Feedback(dt);
   // fear & audio
   const gd=Math.hypot(gh.x-p.x,gh.y-p.y);
   const tf=clamp(1-gd/9,0,1)*(gh.state==='chase'?1:.7);G.fear+=(tf-G.fear)*Math.min(1,dt*3);
@@ -2494,6 +2607,8 @@ function render3D(){
       else if(STAGE===4)c=(floor?FLOOR4:CEIL4).px[ti];
       else if(STAGE===7)c=(floor?FLOOR7:CEIL5).px[ti];
       else if(STAGE===9)c=(floor?FLOOR9:CEIL9).px[ti];
+      else if(STAGE===13){const lampC=!floor&&(Math.floor(fx)%3===0)&&(Math.floor(fy)&1),tk=floor?FLOOR13:lampC?LAMP:CEIL13;c=tk.px[ti];
+        if(lampC&&tk.em[ti]){shade(i,c,.5+.4*fogf(rd),0,0);continue;}}
       else if(STAGE===12){if(!floor){shade(i,SKY12.px[ti],.5,0,0);continue;}c=SNOW12.px[ti];}
       else if(STAGE===11){if(!floor){shade(i,SKY11.px[ti],.97,0,0);continue;}c=GRASS11.px[ti];}
       else if(STAGE===10){const gx=Math.floor(fx)-aox,gy=Math.floor(fy)-aoy;
@@ -2539,6 +2654,8 @@ function render3D(){
     else if(it.t==='cpn')sp.push({x:it.x,y:it.y,w:.36,h0:.25+Math.sin(t*2+it.x)*.03,h1:.55+Math.sin(t*2+it.x)*.03,tex:COUPON,glow:.3});
     else sp.push({x:it.x,y:it.y,w:.3,h0:0,h1:.22,tex:NOTE,glow:G.stage===6?.3:.1});}
   for(const sh of G.shriekers||[])sp.push({x:sh.x,y:sh.y,w:.75,h0:0,h1:.6,tex:SHRIEK,glow:.04+sh.pulse*.2});
+  if(G.stage===13){for(const b of G.beds)if(Math.abs(b.x-p.x)<16&&Math.abs(b.y-p.y)<16)sp.push({x:b.x,y:b.y,w:1.4,h0:0,h1:.6,tex:BED,glow:0});
+    for(const m of G.nurses||[])sp.push({x:m.x,y:m.y,w:.6,h0:0,h1:1.1,tex:NURSE,glow:.05});}
   if(G.stage===12){const fk=Math.floor(t*7)&1;for(const f of G.fires)sp.push({x:f.x,y:f.y,w:.7,h0:0,h1:.7,tex:FIRE[fk],glow:.5});
     for(const o of G.prints)if(Math.abs(o.x-p.x)<10&&Math.abs(o.y-p.y)<10)sp.push({x:o.x,y:o.y,w:.2,h0:0,h1:.04,tex:PRINT,glow:0});
     for(const m of G.stalk||[])sp.push({x:m.x,y:m.y,w:.7,h0:0,h1:1.5,tex:STALK,glow:0});}
@@ -2672,7 +2789,7 @@ function renderTop(){
         if(lv&&ft.em[fi]){buf[i]=ft.px[fi];continue;}
         const fl=dyn?lmAt(wx,cy+1.02)*ENV*(lv?1:.62)+BASE:(lv?lit:dim);shade(i,ft.px[fi],fl*.9,0,NOISE[(i+noff)&65535]*grain);continue;
       }
-      const tex=wall?(STAGE===9&&v===5?T[20]:v===3||v===5?T[v]:v===8?WTOP2:v===9?WTOP4:v===12?WTOP6:v===13?WTOP7:v===21?WTOP10:v===24?WTOP12:v===22?WTOP11:v===23?TENT_TOP:STAGE===8?WTOP2:WTOP):STAGE===12?SNOW12:STAGE===11?GRASS11:STAGE===10?FLOOR10:STAGE===9?FLOOR9:STAGE===8?FLOOR8:STAGE===7?FLOOR7:STAGE===4?FLOOR4:STAGE===2?(cy===TY?RAIL:cy===TY-1||cy===TY+1?BALLAST:CONC):FLOOR,lv=visD[i*4+(wall?0:1)]>127;
+      const tex=wall?(STAGE===9&&v===5?T[20]:v===3||v===5?T[v]:v===8?WTOP2:v===9?WTOP4:v===12?WTOP6:v===13?WTOP7:v===21?WTOP10:v===25?WTOP13:v===24?WTOP12:v===22?WTOP11:v===23?TENT_TOP:STAGE===8?WTOP2:WTOP):STAGE===13?FLOOR13:STAGE===12?SNOW12:STAGE===11?GRASS11:STAGE===10?FLOOR10:STAGE===9?FLOOR9:STAGE===8?FLOOR8:STAGE===7?FLOOR7:STAGE===4?FLOOR4:STAGE===2?(cy===TY?RAIL:cy===TY-1||cy===TY+1?BALLAST:CONC):FLOOR,lv=visD[i*4+(wall?0:1)]>127;
       if(lv&&tex.em[ti]){buf[i]=tex.px[ti];continue;}
       const ll=dyn?lmAt(wx,wy)*ENV*(lv?1:.62)+BASE:(lv?lit:dim);
       if(STAGE===10&&!wall&&cw[row+cx]){const pc=poolColor(wx,wy);shade(i,pc,ll*POOLK,0,NOISE[(i+noff)&65535]*grain);continue;}
@@ -2686,6 +2803,8 @@ function renderTop(){
     else{o.glow=.1;drawTop(it.x,it.y,.5,NOTE,.3,o);}}
   for(const sh of G.shriekers||[]){o.glow=.04+sh.pulse*.25;drawTop(sh.x,sh.y,.85,SHRIEK,0,o);}
   const tags=[];
+  if(G.stage===13){for(const b of G.beds)if(Math.abs(b.x-cam.x)<W/Z&&Math.abs(b.y-cam.y)<H/Z)drawTop(b.x,b.y,1.7,BED_TOP,0,{noff,grain,glow:0});
+    for(const m of G.nurses||[])drawTop(m.x,m.y,1.4,NURSE,0,{noff,grain,glow:.05});}
   if(G.stage===12){const fk=Math.floor(t*7)&1;for(const o of G.prints)if(Math.abs(o.x-cam.x)<W/Z&&Math.abs(o.y-cam.y)<H/Z)drawTop(o.x,o.y,.35,PRINT,o.a,{noff,grain,glow:0});
     for(const f of G.fires)drawTop(f.x,f.y,1,FIRE[fk],0,{noff,grain,glow:.6});
     for(const m of G.stalk||[])drawTop(m.x,m.y,1.6,STALK,0,{noff,grain,glow:0});}
@@ -2717,7 +2836,7 @@ function loop(now){
     const on=isOnline(),live=state==='play'||(on&&(state==='pause'||state==='note'||state==='end'));
     if(live)localUpdate(dt,state!=='play');
     // offline the world stops while paused; online it keeps going for everyone
-    if(!isClient()&&!G.over&&(state==='play'||on)){if(G.stage===2)updateTrain(dt);else if(G.stage===1)updateGhost(dt);else if(G.stage===4)updateRoomker(dt);else if(G.stage===5)update173(dt);else if(G.stage===6)updateMobs(dt);else if(G.stage===7)updateFakes(dt);else if(G.stage===8)updatePower(dt);else if(G.stage===9)updateDoll(dt);else if(G.stage===10)updateSwimmers(dt);else if(G.stage===11)updateParty(dt);else if(G.stage===12)updateSnow(dt);}
+    if(!isClient()&&!G.over&&(state==='play'||on)){if(G.stage===2)updateTrain(dt);else if(G.stage===1)updateGhost(dt);else if(G.stage===4)updateRoomker(dt);else if(G.stage===5)update173(dt);else if(G.stage===6)updateMobs(dt);else if(G.stage===7)updateFakes(dt);else if(G.stage===8)updatePower(dt);else if(G.stage===9)updateDoll(dt);else if(G.stage===10)updateSwimmers(dt);else if(G.stage===11)updateParty(dt);else if(G.stage===12)updateSnow(dt);else if(G.stage===13)updateNurses(dt);}
     if(on)netTick(dt);
     voiceTick();
     if(state==='play'||state==='note'||(on&&state==='pause'))render();
