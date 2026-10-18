@@ -195,6 +195,7 @@ h1{font-family:var(--vhs);font-weight:400;font-size:clamp(56px,14vw,104px);margi
       <button data-st="11" aria-pressed="false">11</button>
       <button data-st="12" aria-pressed="false">12</button>
       <button data-st="13" aria-pressed="false">13</button>
+      <button data-st="14" aria-pressed="false">14</button>
     </div>
     <div class="diff" role="group" aria-label="視点">
       <button data-v="top" aria-pressed="true">見下ろし</button>
@@ -449,7 +450,7 @@ function chunk(rx,ry){const k=rx*8192+ry;let c=CH.get(k);
 const FR=3,FX0=(R0-FR)*P,FX1=(R0+FR+1)*P;let FIN=false;
 const inMap=(x,y)=>!FIN||(x>FX0&&x<FX1&&y>FX0&&y<FX1);
 const WALLV=()=>STAGE===4?9:STAGE===6?12:STAGE===7?13:STAGE===10?21:1;
-function cellAt(x,y){x=Math.floor(x);y=Math.floor(y);if(STAGE===13)return hosp13(x,y);if(STAGE===12)return field12(x,y);if(STAGE===11)return field11(x,y);if(STAGE===9)return hall9(x,y);if(STAGE===8)return garageCell(x,y);if(STAGE===2)return tunnelCell(x,y);if(STAGE===5)return hallCell(x,y);if(FIN&&(x<=FX0||x>=FX1||y<=FX0||y>=FX1))return WALLV();
+function cellAt(x,y){x=Math.floor(x);y=Math.floor(y);if(STAGE===14)return hotel14(x,y);if(STAGE===13)return hosp13(x,y);if(STAGE===12)return field12(x,y);if(STAGE===11)return field11(x,y);if(STAGE===9)return hall9(x,y);if(STAGE===8)return garageCell(x,y);if(STAGE===2)return tunnelCell(x,y);if(STAGE===5)return hallCell(x,y);if(FIN&&(x<=FX0||x>=FX1||y<=FX0||y>=FX1))return WALLV();
   const rx=Math.floor(x/P),ry=Math.floor(y/P),v=chunk(rx,ry)[(y-ry*P)*P+(x-rx*P)];return v===1?WALLV():v;}
 function setCell(x,y,v){const rx=Math.floor(x/P),ry=Math.floor(y/P);chunk(rx,ry)[(y-ry*P)*P+(x-rx*P)]=v;}
 const open=v=>v===0||v===5;
@@ -578,7 +579,7 @@ function trainFeedback(dt){
   else{AU.set(AU.trG,0);AU.set(AU.scG,0);}
 }
 function showBanner(t){const s=$('spotted');s.textContent=t;s.classList.remove('on');void s.offsetWidth;s.classList.add('on');}
-function startStage(n){if(n===13)startStage13();else if(n===12)startStage12();else if(n===11)startStage11();else if(n===10)startStage10();else if(n===9)startStage9();else if(n===8)startStage8();else if(n===7)startStage7();else if(n===6)startStage6();else if(n===5)startStage5();else if(n===4)startStage4();else if(n===3)startStage3();else startStage2();writeSave();refreshLoad();}
+function startStage(n){if(n===14)startStage14();else if(n===13)startStage13();else if(n===12)startStage12();else if(n===11)startStage11();else if(n===10)startStage10();else if(n===9)startStage9();else if(n===8)startStage8();else if(n===7)startStage7();else if(n===6)startStage6();else if(n===5)startStage5();else if(n===4)startStage4();else if(n===3)startStage3();else startStage2();writeSave();refreshLoad();}
 function startStage2(){
   if(!G)return;
   clearPoke();show('scare',false);document.body.classList.remove('shake');show('endOv',false);show('pauseOv',false);show('noteOv',false);
@@ -1905,6 +1906,111 @@ function stage13Feedback(dt){
   if(inBed&&!G.bedIn)msg('ベッドの下に隠れた。ここなら見つからない。',2);G.bedIn=inBed;
   $('fear').style.opacity=Math.max(+$('fear').style.opacity||0,inBed?.4:0,chase<8?.15+.45*(1-chase/8):0);
 }
+/* ---------- stage 14: the hotel ---------- */
+// Long hotel corridors, each with its own carpet colour, lined with doors whose numbers all look alike.
+// Your room is told at the start: its number and the colour of its corridor. Open it and you are out.
+// Open a wrong one and the guest inside comes out after you for a while.
+const D14W=61,D14H=25;let D14X0=0,D14Y0=0,D14=new Map();
+const CARPET_NAMES=['赤','青','緑','金'];
+T[28]=mkTex(g=>{g.fillStyle='#7a3b2c';g.fillRect(0,0,64,64);g.fillStyle='rgba(200,150,90,.22)';
+  for(let y=0;y<44;y+=11)for(let x=(y/11&1)*8;x<64;x+=16){g.beginPath();g.moveTo(x,y);g.lineTo(x+4,y+5);g.lineTo(x,y+10);g.lineTo(x-4,y+5);g.closePath();g.fill();}
+  g.fillStyle='#4a2a1c';g.fillRect(0,44,64,20);g.fillStyle='#c8a466';g.fillRect(0,43,64,2);g.fillStyle='#3a2014';g.fillRect(0,61,64,3);grit(g,10);});
+T[26]=mkTex(g=>{g.fillStyle='#7a3b2c';g.fillRect(0,0,64,64);g.fillStyle='#d7c39a';g.fillRect(12,6,40,58);g.fillStyle='#5b3422';g.fillRect(15,9,34,55);
+  g.fillStyle='#6a3d28';g.fillRect(19,14,26,20);g.fillRect(19,38,26,22);g.fillStyle='#d9b45a';g.fillRect(43,36,4,3);g.fillRect(44,34,2,8);grit(g,8);});
+T[27]=mkTex(g=>{g.fillStyle='#7a3b2c';g.fillRect(0,0,64,64);g.fillStyle='#d7c39a';g.fillRect(12,6,40,58);g.fillStyle='#050404';g.fillRect(15,9,34,55);
+  g.fillStyle='#3a2216';g.fillRect(15,9,6,55);});
+const WTOP14=mkTex(g=>{g.fillStyle='#5a2e22';g.fillRect(0,0,64,64);g.strokeStyle='rgba(200,160,100,.45)';g.strokeRect(1.5,1.5,61,61);grit(g,6);});
+const CARPETS=[['#7d1f22','#5e1416','#c49a4a'],['#1f3a7d','#152a5e','#c4b04a'],['#1f6a3a','#144a28','#c4a44a'],['#8a6a1f','#6a4f14','#2a1a0a']].map(([a,b,c])=>mkTex(g=>{
+  g.fillStyle=a;g.fillRect(0,0,64,64);g.fillStyle=b;for(let i=0;i<4;i++)for(let j=0;j<4;j++)if((i+j)&1)g.fillRect(i*16,j*16,16,16);
+  g.strokeStyle=c;g.lineWidth=1.5;for(let i=0;i<4;i++)for(let j=0;j<4;j++){g.beginPath();g.arc(i*16+8,j*16+8,4,0,7);g.stroke();}grit(g,8);}));
+const CEIL14=mkTex(g=>{g.fillStyle='#e8dcc0';g.fillRect(0,0,64,64);g.fillStyle='#d4c6a6';g.fillRect(0,0,64,2);g.fillRect(0,0,2,64);grit(g,6);});
+const NUMT=new Map();
+function numTex(n){let t=NUMT.get(n);if(t)return t;
+  t=mkTex(g=>{g.fillStyle='#c9a24a';g.fillRect(6,18,52,28);g.fillStyle='#2a1a0a';g.fillRect(8,20,48,24);g.fillStyle='#f2d88a';g.font='bold 17px serif';g.textAlign='center';g.textBaseline='middle';g.fillText(String(n),32,33);});
+  NUMT.set(n,t);return t;}
+function guestPic(g){
+  g.fillStyle='#e9e4da';g.beginPath();g.moveTo(22,20);g.lineTo(42,20);g.lineTo(46,60);g.lineTo(18,60);g.closePath();g.fill();
+  g.fillStyle='#cfc8bb';g.fillRect(30,20,4,40);g.fillRect(18,38,28,3);
+  g.fillStyle='#e9e4da';g.fillRect(14,22,6,26);g.fillRect(44,22,6,26);
+  g.fillStyle='#1a1414';g.fillRect(14,46,6,10);g.fillRect(44,46,6,10);g.fillRect(24,60,6,4);g.fillRect(34,60,6,4);
+  g.fillStyle='#1a1414';g.fillRect(29,12,6,9);g.beginPath();g.ellipse(32,8,8,9,0,0,7);g.fill();
+  g.fillStyle='#fff';g.beginPath();g.arc(28.5,7,2.2,0,7);g.arc(35.5,7,2.2,0,7);g.fill();g.fillStyle='#000';g.fillRect(28,6,1,2);g.fillRect(35,6,1,2);
+  g.fillStyle='#fff';g.fillRect(25,12,14,2);g.fillStyle='#000';for(let i=0;i<7;i++)g.fillRect(25+i*2,12,1,2);
+}
+const GUEST=mkTex(guestPic);
+function hotel14(x,y){x-=D14X0;y-=D14Y0;
+  if(x<1||y<1||x>D14W-2||y>D14H-2)return 28;
+  if(y%6===3)return 0;
+  if((x%12===6||x===1)&&y>=3&&y<=21)return 0;
+  const d=D14.get(x+','+y);if(d)return d.open?27:26;
+  return 28;}
+function layoutStage14(){
+  const r=mulberry(SEED^0x14d00a);D14=new Map();G.doors=[];
+  const room=11+Math.floor(r()*9),no=room*100+1+Math.floor(r()*29);   // e.g. 1207
+  const s=String(no),sw=(i,j)=>{const a=s.split('');const t=a[i];a[i]=a[j];a[j]=t;return+a.join('');};
+  const look=[sw(2,3),sw(1,2),no+1,no-1,no+10,no-10,sw(0,1),no+100].filter(v=>v!==no&&v>1000&&v<9999);
+  const red=Math.floor(r()*4),cols=[0,1,2,3].sort(()=>r()-.5);   // carpet colour per corridor
+  G.room={no,colour:cols[red],corr:red};G.cols=cols;
+  for(let k=0;k<4;k++){const cy=3+6*k;
+    for(let x=4;x<D14W-2;x+=4)for(const dy of[-1,1]){const d={x,y:cy+dy,fy:cy,k,no:look[Math.floor(r()*look.length)],open:false,i:G.doors.length};
+      G.doors.push(d);D14.set(x+','+d.y,d);}}
+  // the real room, plus a few doors elsewhere with the very same number
+  const mine=G.doors.filter(d=>d.k===red),pick=mine[Math.floor(r()*mine.length)];pick.no=no;pick.real=true;
+  const other=G.doors.filter(d=>d.k!==red);for(let i=0;i<4;i++)other[Math.floor(r()*other.length)].no=no;
+  G.guests=[];
+}
+function startStage14(){
+  if(!G)return;
+  clearPoke();show('scare',false);document.body.classList.remove('shake');show('endOv',false);show('pauseOv',false);show('noteOv',false);hideS3UI();
+  $('msg').classList.remove('show');msgT=0;
+  STAGE=14;LMV=.72;FIN=false;SEED=(SEED^0x0b0014)|0;CH=new Map();
+  D14X0=Math.floor(START)-1;D14Y0=Math.floor(START)-12;
+  G.stage=14;G.over=false;G.toStage2=false;G.results=null;G.enraged=false;G.train=null;G.s3=null;G.s5=null;G.arrows=[];G.shriekers=[];G.mobs=[];G.fakes=[];G.suits=[];G.shadows=[];G.lights=null;G.rl=null;G.doll=null;G.fixed=[];G.swimmers=[];G.ripples=[];G.party=[];G.balloons=[];G.stalk=[];G.fires=[];G.prints=[];G.nurses=[];G.beds=[];
+  G.taken=new Set();G.ltaken=new Set(['start']);layoutStage14();G.exit=null;G.exitPos=null;$('exitDir').hidden=true;
+  for(const q of G.ps)if(q){q.status='alive';q.x=q.dx=D14X0+1.5;q.y=q.dy=D14Y0+5.5+(q.slot&7)*1.6;q.time=0;}
+  const me=G.ps[G.me];Object.assign(G.p,{x:me.x,y:me.y,a:Math.PI/2,pitch:0,stam:100,exh:false,bob:0});
+  Object.assign(G.g,{wait:1e9,state:'wander',tslot:-1});
+  try{view=localStorage.getItem('noclip_view')||'top';}catch(e){}
+  $('slots').parentNode.hidden=true;
+  $('stamp').innerHTML=(isOnline()?`ONLINE ${G.ps.filter(Boolean).length}P`:'SP')+'　STAGE 14<br>OCT.11 1996';
+  state='play';show('hud',true);setTouchUI(true);show('tAct',isTouch);
+  const c=$('stageCard');c.innerHTML='<b>STAGE 14</b><span>― ホテル ―</span>';c.classList.remove('on');void c.offsetWidth;c.classList.add('on');
+  const rm=G.room;msg(`鍵のタグ：「${rm.no}号室　${CARPET_NAMES[rm.colour]}のじゅうたんの廊下」　ほかのドアは開けるな。`,10);
+  G.keyTag=`${rm.no}号室・${CARPET_NAMES[rm.colour]}の廊下`;
+  $('stamp').innerHTML+=`<br>KEY ${rm.no}・${CARPET_NAMES[rm.colour]}`;
+  lockPtr();
+}
+function carpetAt(y){return G.cols[clamp(Math.floor((Math.floor(y)-D14Y0)/6),0,3)];}
+// the door in front of you, if any
+function doorNear(x,y){let best=null,bd=.95;for(const d of G.doors){if(d.open)continue;const fx=d.x+.5,fy=d.fy+.5,dd=Math.hypot(D14X0+fx-x,D14Y0+fy-y);if(dd<bd){bd=dd;best=d;}}return best;}
+function hotelAction(){
+  if(G.ps[G.me].status!=='alive')return false;const d=doorNear(G.p.x,G.p.y);if(!d)return false;
+  if(d.real){AU.pickup();reachExit();return true;}
+  if(isClient()){try{NET.conn.send({t:'door',i:d.i});}catch(e){}}else openWrong(d.i);
+  return true;}
+// host / single player: a wrong door lets its guest out
+function openWrong(i){const d=G.doors[i];if(!d||d.open||d.real)return;d.open=true;
+  const D=DIFF[diff];G.guests.push({x:D14X0+d.x+.5,y:D14Y0+d.fy+.5,a:0,door:i,t:10+4*D.spd,state:'out',repath:0,field:null,fk:''});}
+function updateGuests(dt){
+  const D=DIFF[diff],act=alivePs();
+  for(const g of G.guests){g.repath-=dt;g.t-=dt;
+    if(g.t>0&&act.length){let q=null,qd=1e9;for(const o of act){const d=Math.hypot(o.x-g.x,o.y-g.y);if(d<qd){qd=d;q=o;}}
+      goP11(g,q.x,q.y,(qd>14?5:3.4)*D.spd*dt);
+      for(const o of act)if(o.status==='alive'&&Math.hypot(o.x-g.x,o.y-g.y)<.55)playerDone(o.slot,'caught');}
+    else{const d=G.doors[g.door],hx=D14X0+d.x+.5,hy=D14Y0+d.fy+.5;goP11(g,hx,hy,3*D.spd*dt);if(Math.hypot(hx-g.x,hy-g.y)<.3)g.gone=true;}}
+  G.guests=G.guests.filter(g=>!g.gone);
+}
+// everyone: prompts, door sounds, footsteps of the guests
+function stage14Feedback(dt){
+  const me=G.p,d=G.ps[G.me].status==='alive'?doorNear(me.x,me.y):null,pr=$('prompt');
+  if(d){pr.textContent=`${d.no}号室を開ける [F]`;show('prompt',true);}else show('prompt',false);
+  for(const o of G.doors)if(o.open&&!o.seen){o.seen=1;const dd=Math.hypot(D14X0+o.x+.5-me.x,D14Y0+o.fy+.5-me.y);
+    AU.noise(.3,600,1,.5*clamp(1-dd/30,.1,1),'lowpass');AU.tone(180,.4,.15*clamp(1-dd/30,0,1),'sawtooth',0,90);
+    if(dd<4){AU.stinger();msg('ちがう部屋だ――中から、何かが出てきた！',3);}}
+  let near=1e9;for(const g of G.guests)near=Math.min(near,Math.hypot(g.x-me.x,g.y-me.y));
+  $('fear').style.opacity=Math.max(+$('fear').style.opacity||0,near<8?.15+.45*(1-near/8):0);
+  G.gstT=(G.gstT||0)-dt;if(G.gstT<=0&&near<12){G.gstT=.42;AU.noise(.06,300,1.5,.3*(1-near/12),'lowpass');}
+}
 /* ---------- story ---------- */
 const NOTES=[
   {h:'拾った紙切れ',p:'あれは目がいい。見通しのいい部屋では、遠くから見つかる。\n壁や柱の陰を歩け。\n走れば足音で気づかれる。\n床の赤い矢印は嘘をつく。出口は、矢印の反対にある。\n\n低い唸り声が聞こえたら、近くにいる。'},
@@ -1992,6 +2098,7 @@ function hostRecv(conn,d){
   if(d.t==='p'){if(q.status==='alive'){q.x=+d.x||q.x;q.y=+d.y||q.y;}q.a=+d.a||0;q.run=!!d.r;q.moving=!!d.m;}
   else if(d.t==='pick')hostPick(m.slot,String(d.key));
   else if(d.t==='esc'){if(q.status==='alive')playerDone(m.slot,'escaped');}
+  else if(d.t==='door'){if(q.status==='alive'&&G.stage===14)openWrong(d.i|0);}
   else if(d.t==='quit'){if(q.status==='alive')playerDone(m.slot,'left');}
   else if(d.t==='dead'){if(q.status==='alive')playerDone(m.slot,'caught');}
   else if(d.t==='loud'){q.loudT=G.time;}
@@ -2062,6 +2169,8 @@ function netTick(dt){
   netAcc+=dt;if(netAcc<1/15)return;netAcc=0;
   if(isHost()){const g=G.g;
     bc({t:'s',g:[+g.x.toFixed(2),+g.y.toFixed(2),+g.a.toFixed(2),g.state==='chase'?1:0,+g.chaseT.toFixed(2),g.wait>0?1:0,g.tslot],
+      GU:G.stage===14?G.guests.map(m=>[+m.x.toFixed(2),+m.y.toFixed(2)]):null,
+      DO:G.stage===14?G.doors.reduce((a,d)=>{if(d.open)a.push(d.i);return a;},[]):null,
       NU:G.stage===13?G.nurses.map(m=>[+m.x.toFixed(2),+m.y.toFixed(2),m.state[0]]):null,
       ST:G.stage===12?G.stalk.map(m=>[+m.x.toFixed(2),+m.y.toFixed(2),m.state[0]]):null,
       TP:G.stage===12?G.temps:null,
@@ -2079,6 +2188,7 @@ function netTick(dt){
     try{NET.conn.send({t:'p',x:+p.x.toFixed(2),y:+p.y.toFixed(2),a:+p.a.toFixed(2),r:p.run?1:0,m:p.moving?1:0});}catch(e){}}
 }
 function applySnap(d){const g=G.g,s=d.g;
+  if(G.stage===14&&d.GU&&G.doors){G.guests=d.GU.map(v=>({x:v[0],y:v[1]}));if(d.DO)for(const i of d.DO)if(G.doors[i])G.doors[i].open=true;}
   if(G.stage===13&&d.NU&&G.nurses)d.NU.forEach((v,i)=>{const m=G.nurses[i];if(m){m.x=v[0];m.y=v[1];m.state=v[2]==='c'?'chase':v[2]==='l'?'listen':'patrol';}});
   if(G.stage===12&&d.ST&&G.stalk){d.ST.forEach((v,i)=>{const m=G.stalk[i];if(m){m.x=v[0];m.y=v[1];m.state=v[2]==='c'?'chase':v[2]==='t'?'track':'wander';}});if(d.TP)G.temps=d.TP;}
   if(G.stage===11&&d.PG&&G.party){d.PG.forEach((v,i)=>{const m=G.party[i];if(m){m.x=v[0];m.y=v[1];m.state=v[2]==='c'?'chase':v[2]==='g'?'go':'walk';}});if(d.BP)for(const i of d.BP)if(G.balloons[i])G.balloons[i].p=1;}
@@ -2104,6 +2214,7 @@ addEventListener('keydown',e=>{
   if(state==='note'){closeNote();e.preventDefault();return;}
   keys[e.code]=true;
   if(state==='play'){
+    if(STAGE===14&&(e.code==='KeyF'||e.code==='Space')){if(hotelAction()){keys[e.code]=false;e.preventDefault();return;}}
     if(STAGE===3&&(e.code==='Space'||e.code==='KeyE')){if(s3Action(e.code)){keys[e.code]=false;e.preventDefault();return;}if(e.code==='Space')e.preventDefault();}
     if(e.code==='Enter'&&isOnline()){e.preventDefault();focusChat();return;}
     if(e.code==='KeyC'&&isOnline()){toggleMic();return;}
@@ -2135,7 +2246,7 @@ tl.addEventListener('pointerup',tEnd);tl.addEventListener('pointercancel',tEnd);
 let touchJump=false;
 $('tJump').addEventListener('pointerdown',e=>{e.preventDefault();touchJump=true;});
 for(const ev of['pointerup','pointercancel','pointerleave'])$('tJump').addEventListener(ev,()=>{touchJump=false;});
-$('tAct').addEventListener('pointerdown',e=>{e.preventDefault();s3Action('KeyE');});
+$('tAct').addEventListener('pointerdown',e=>{e.preventDefault();if(STAGE===14)hotelAction();else s3Action('KeyE');});
 $('tRun').addEventListener('pointerdown',e=>{e.preventDefault();touchRun=true;$('tRun').classList.add('on');});
 for(const ev of['pointerup','pointercancel','pointerleave'])$('tRun').addEventListener(ev,()=>{touchRun=false;$('tRun').classList.remove('on');});
 
@@ -2156,7 +2267,7 @@ const tc=t=>[t/3600,t/60%60,t%60].map(v=>String(Math.floor(v)).padStart(2,'0')).
 // save slots: an auto checkpoint plus three slots you pick; a save is the start of the stage you were on
 const SLOTS=['auto','1','2','3'],slotName=k=>k==='auto'?'オート':'データ'+k;
 const slotKey=k=>'noclip_save_'+k;
-function okSave(v){return v&&v.stage>=1&&v.stage<=13&&v.diff>=0&&v.diff<=2?v:null;}
+function okSave(v){return v&&v.stage>=1&&v.stage<=14&&v.diff>=0&&v.diff<=2?v:null;}
 function readSlot(k){try{return okSave(JSON.parse(localStorage.getItem(slotKey(k))||'null'));}catch(e){return null;}}
 try{const old=localStorage.getItem('noclip_save');if(old&&!localStorage.getItem(slotKey('1')))localStorage.setItem(slotKey('1'),old);localStorage.removeItem('noclip_save');}catch(e){}
 function curSave(){return{stage:G.stage,diff,time:Math.floor(G.time),at:Date.now()};}
@@ -2224,13 +2335,13 @@ function toTitle(){hideS3UI();
 function openNote(id){const n=typeof id==='object'?id:NOTES[id];state='note';AU.page();$('noteH').textContent=n.h;$('noteP').textContent=n.p;show('noteOv',true);if(!isOnline())AU.silence();if(document.pointerLockElement)document.exitPointerLock();}
 function closeNote(){if(state!=='note')return;show('noteOv',false);state='play';last=performance.now();lockPtr();}
 // pick where a fresh game begins (4 = right after Sonic.exe); remembered per browser
-let startStageSel=1;try{const v=+localStorage.getItem('noclip_startstage');if(v>=1&&v<=13)startStageSel=v;}catch(e){}
+let startStageSel=1;try{const v=+localStorage.getItem('noclip_startstage');if(v>=1&&v<=14)startStageSel=v;}catch(e){}
 function setStartStage(n){startStageSel=n;try{localStorage.setItem('noclip_startstage',n);}catch(e){}
   document.querySelectorAll('[data-st]').forEach(b=>{b.setAttribute('aria-pressed',+b.dataset.st===n);if(b.dataset.st==='1')b.textContent=n===1?'STAGE 1から':'1';else b.textContent=+b.dataset.st===n?`STAGE ${n}から`:b.dataset.st;});}
 document.querySelectorAll('[data-st]').forEach(b=>b.addEventListener('click',()=>setStartStage(+b.dataset.st)));setStartStage(startStageSel);
 const startFresh=()=>start(startStageSel>1?{stage:startStageSel,diff,time:0}:undefined);
 $('startBtn').onclick=startFresh;$('retryBtn').onclick=startFresh;$('titleBtn').onclick=toTitle;$('quitBtn').onclick=toTitle;$('resumeBtn').onclick=resume;
-$('pauseBtn').onclick=pause;$('dlg').addEventListener('pointerdown',e=>{e.preventDefault();advanceDlg();});$('prompt').addEventListener('pointerdown',e=>{e.preventDefault();s3Action('KeyE');});$('noteOv').addEventListener('pointerdown',closeNote);
+$('pauseBtn').onclick=pause;$('dlg').addEventListener('pointerdown',e=>{e.preventDefault();advanceDlg();});$('prompt').addEventListener('pointerdown',e=>{e.preventDefault();if(STAGE===14)hotelAction();else s3Action('KeyE');});$('noteOv').addEventListener('pointerdown',closeNote);
 // invite link: opening it fills in the room code
 // keep the friends-only key (?key=…) so the invite opens for them too
 function inviteURL(){const k=new URLSearchParams(location.search).get('key');return location.origin+location.pathname+'?'+(k?'key='+encodeURIComponent(k)+'&':'')+'room='+NET.code;}
@@ -2248,7 +2359,7 @@ function playerDone(slot,st){   // host or single player only
   if(isHost())bc({t:'done',slot,st});
   applyDone(slot,st);
   // the first one out of stage 1 drags everybody (even the caught) onto the tracks
-  if(G.stage<13&&st==='escaped'&&!G.toStage2){G.toStage2=true;G.over=true;const g0=G,n=G.stage+1;
+  if(G.stage<14&&st==='escaped'&&!G.toStage2){G.toStage2=true;G.over=true;const g0=G,n=G.stage+1;
     if(isHost())bc({t:'stagesoon',name:q.name});
     setTimeout(()=>{if(G!==g0||G.stage!==n-1)return;if(isHost())bc({t:'stage',n});startStage(n);},3000);return;}
   if(G.toStage2)return;
@@ -2273,13 +2384,13 @@ function endScreenButtons(){
 function localEscape(){
   state='end';AU.silence();setTouchUI(false);if(document.pointerLockElement)document.exitPointerLock();placeLabels([]);
   $('endT').textContent='EXIT';$('endT').className='';$('fear').style.opacity=0;show('hud',false);
-  if(G.stage<13){
+  if(G.stage<14){
     $('endText').innerHTML=['','非常口を抜けた――はずだった。<br>足元に、冷たい鉄のレールが二本、闇の奥へ伸びている。','線路の果ての非常口を抜けた。<br>……世界が、平べったくなった気がする。',
-      'エレベーターは止まらずに、下へ、下へ。<br>扉が開くと、そこは真っ暗だった。','非常口の先は、コンクリートの長い廊下だった。<br>廊下の先に、何かが立っている。','扉の向こうは、白い廊下だった。<br>白い人たちが、こっちを向いて待っている。<br>――顔を、よく見てあげて。','最後の扉――のはずだった。<br>開けた先は、鏡だらけの部屋だった。','鏡の向こうは、コンクリートの地下駐車場だった。<br>遠くで、送電塔の唸る音がする。','スロープの先は、空の絵が描かれた大きな部屋だった。<br>遠くの壁の前に、大きな人形が立っている。','GOALの壁の向こうは、白いタイルと水の部屋だった。<br>水面に、何かの波紋が広がっている。','プールの扉の先は、明るい草原だった。<br>風船とパーティーの飾りが、風に揺れている。<br>遠くで、誰かが笑っている。','緑の扉を開けると、冷たい風が吹きこんできた。<br>一面の雪と、黒い木々。<br>振り返ると、扉はもう雪に埋もれていた。','山小屋の扉を開けると、消毒液の匂いがした。<br>ピッ……ピッ……と、心電図の音が聞こえる。<br>ここは、夜の病院だ。'][G.stage];
+      'エレベーターは止まらずに、下へ、下へ。<br>扉が開くと、そこは真っ暗だった。','非常口の先は、コンクリートの長い廊下だった。<br>廊下の先に、何かが立っている。','扉の向こうは、白い廊下だった。<br>白い人たちが、こっちを向いて待っている。<br>――顔を、よく見てあげて。','最後の扉――のはずだった。<br>開けた先は、鏡だらけの部屋だった。','鏡の向こうは、コンクリートの地下駐車場だった。<br>遠くで、送電塔の唸る音がする。','スロープの先は、空の絵が描かれた大きな部屋だった。<br>遠くの壁の前に、大きな人形が立っている。','GOALの壁の向こうは、白いタイルと水の部屋だった。<br>水面に、何かの波紋が広がっている。','プールの扉の先は、明るい草原だった。<br>風船とパーティーの飾りが、風に揺れている。<br>遠くで、誰かが笑っている。','緑の扉を開けると、冷たい風が吹きこんできた。<br>一面の雪と、黒い木々。<br>振り返ると、扉はもう雪に埋もれていた。','山小屋の扉を開けると、消毒液の匂いがした。<br>ピッ……ピッ……と、心電図の音が聞こえる。<br>ここは、夜の病院だ。','非常口の先は、じゅうたんの敷かれたホテルの廊下だった。<br>手の中に、いつのまにか部屋の鍵がある。<br>鍵のタグには、部屋番号が書いてあった。'][G.stage];
     $('endStat').textContent=(isOnline()?'全員で ':'')+`STAGE ${G.stage+1} へ……`;
     show('endOv',true);$('retryBtn').hidden=true;return;}
   const best=!isOnline()&&saveBest(G.time);
-  $('endText').innerHTML='非常口の先は、明け方の病院の駐車場だった。<br>ポケットに、見覚えのない診察券が入っている。<br>次の予約日は――今日の夜だった。';
+  $('endText').innerHTML='鍵が回り、扉が開いた。<br>部屋の窓から、本物の朝日が差しこんでいる。<br>ベッドに倒れこむと、廊下のほうで、ノックの音が一度だけした。';
   $('endStat').textContent=`${DIFF[diff].name}　脱出時間 ${fmt(G.time)}${best?'　最速記録！':''}`;
   show('endOv',true);endScreenButtons();
 }
@@ -2394,6 +2505,7 @@ function jumpscare(){
       else if(STAGE===2){g.scale(s/40,s/40);g.translate(-32,-34);trainFace(g);}
       else if(STAGE===4){g.scale(s/40,s/40);g.translate(-32,-30);roomkerPic(g);}
       else if(STAGE===5){g.scale(s/36,s/36);g.translate(-32,-16);statuePic(g);}
+      else if(STAGE===14){g.scale(s/34,s/34);g.translate(-32,-12);guestPic(g);}
       else if(STAGE===13){g.scale(s/34,s/34);g.translate(-32,-14);nursePic(g);}
       else if(STAGE===12){g.fillStyle='rgba(225,232,240,.5)';g.fillRect(-s,-s,2*s,2*s);g.scale(s/40,s/40);g.translate(-32,-12);stalkPic(g);}
       else if(STAGE===11){g.scale(s/34,s/34);g.translate(-32,-16);partyPic(g,true);}
@@ -2411,7 +2523,7 @@ function jumpscare(){
       g.fillStyle='#000';g.fillRect(0,h*.42,w,h*.16);g.fillStyle='#fff';g.font=`${Math.round(h*.08)}px DotGothic16, monospace`;g.textAlign='center';g.textBaseline='middle';g.fillText('NO SIGNAL',w/2,h/2);
       AU.tone(1000,.9,.12,'sine');
       setTimeout(()=>{if(state!=='end')return;show('scare',false);$('endT').textContent='信号途絶';$('endT').className='dead';
-        $('endText').innerHTML=STAGE===13?'ナースが、やさしく手首をつかんだ。<br>「検温の時間ですよ」<br>……心電図の音が、ピーーーと長く鳴った。':STAGE===12?((G.temps&&G.temps[G.me]<=.5)?'指先の感覚が消えて、膝から雪に沈んだ。<br>吹雪が、すぐにあなたを白く埋めた。<br>その上を、細長い足跡が通りすぎていく。':'足跡の先に、白くて細長いものが立っていた。<br>長い腕が、ゆっくりと伸びてきた。<br>雪の上の足跡は、そこで途切れている。'):STAGE===11?'たくさんの笑顔に囲まれて、風船を手渡された。<br>「パーティーへようこそ =)」<br>……もう、ここから出たいとは思わない。':STAGE===10?'足首をつかまれ、水の中に引きずり込まれた。<br>水面の波紋は、すぐに消えた。':STAGE===9?'乾いた音がひとつ。<br>人形は、また壁のほうを向いて歌い始めた。':STAGE===8?'暗闇の中で、目と口だけが笑った。<br>次に明かりがついたとき、そこには誰もいなかった。':STAGE===7?'白い化物は、脱ぎ捨てた服の代わりに、あなたを着た。<br>鏡の中を、あなたの姿をした何かが歩いていく。':STAGE===6?'白い腕が、肩をつかんだ。<br>最後に見たのは、真っ黒な口の奥だった。':STAGE===5?'首の後ろで、乾いた音がした。<br>まばたきをした覚えは、ない。':STAGE===4?'耳元で、湿った息の音がした。<br>あれには、最初から全部聞こえていた。':STAGE===3?'赤い目が、すぐ目の前で笑った。<br>「Good show.」':STAGE===2?'赤い車体と無数の脚が、視界を埋め尽くした。<br>レールの上に、カメラだけが転がっている。':'最後に映っていたのは、湿ったカーペットの上を<br>引きずられていく視界だった。<br>テープは、まだ回り続けている。';
+        $('endText').innerHTML=STAGE===14?'冷たい手が、あなたの鍵を取り上げた。<br>「チェックアウトは、まだですよ」<br>扉が閉まり、廊下はまた静かになった。':STAGE===13?'ナースが、やさしく手首をつかんだ。<br>「検温の時間ですよ」<br>……心電図の音が、ピーーーと長く鳴った。':STAGE===12?((G.temps&&G.temps[G.me]<=.5)?'指先の感覚が消えて、膝から雪に沈んだ。<br>吹雪が、すぐにあなたを白く埋めた。<br>その上を、細長い足跡が通りすぎていく。':'足跡の先に、白くて細長いものが立っていた。<br>長い腕が、ゆっくりと伸びてきた。<br>雪の上の足跡は、そこで途切れている。'):STAGE===11?'たくさんの笑顔に囲まれて、風船を手渡された。<br>「パーティーへようこそ =)」<br>……もう、ここから出たいとは思わない。':STAGE===10?'足首をつかまれ、水の中に引きずり込まれた。<br>水面の波紋は、すぐに消えた。':STAGE===9?'乾いた音がひとつ。<br>人形は、また壁のほうを向いて歌い始めた。':STAGE===8?'暗闇の中で、目と口だけが笑った。<br>次に明かりがついたとき、そこには誰もいなかった。':STAGE===7?'白い化物は、脱ぎ捨てた服の代わりに、あなたを着た。<br>鏡の中を、あなたの姿をした何かが歩いていく。':STAGE===6?'白い腕が、肩をつかんだ。<br>最後に見たのは、真っ黒な口の奥だった。':STAGE===5?'首の後ろで、乾いた音がした。<br>まばたきをした覚えは、ない。':STAGE===4?'耳元で、湿った息の音がした。<br>あれには、最初から全部聞こえていた。':STAGE===3?'赤い目が、すぐ目の前で笑った。<br>「Good show.」':STAGE===2?'赤い車体と無数の脚が、視界を埋め尽くした。<br>レールの上に、カメラだけが転がっている。':'最後に映っていたのは、湿ったカーペットの上を<br>引きずられていく視界だった。<br>テープは、まだ回り続けている。';
         if(isOnline()&&G.stage===1)$('endText').innerHTML+='<br>――誰かが脱出できれば、まだ終わりじゃない。';
         $('endStat').textContent=`${DIFF[diff].name}　STAGE ${G.stage}　記録時間 ${tc(G.ps[G.me].time||G.time)}`;show('endOv',true);$('fear').style.opacity=0;endScreenButtons();},1200);
     }})(t0);
@@ -2473,7 +2585,7 @@ function localUpdate(dt,frozen){
     if(G.tal>=G.need)continue;
     if(isClient()){if(!G.pend.has(it.key)){G.pend.add(it.key);try{NET.conn.send({t:'pick',key:it.key});}catch(e){}}}
     else hostPick(G.me,it.key);}
-  if(G.stage===2)trainFeedback(dt);else if(G.stage===4)stage4Feedback(dt);else if(G.stage===5)stage5Feedback(dt);else if(G.stage===8)stage8Feedback(dt);else if(G.stage===9)stage9Feedback(dt);else if(G.stage===10)stage10Feedback(dt);else if(G.stage===11)stage11Feedback(dt);else if(G.stage===12)stage12Feedback(dt);else if(G.stage===13)stage13Feedback(dt);
+  if(G.stage===2)trainFeedback(dt);else if(G.stage===4)stage4Feedback(dt);else if(G.stage===5)stage5Feedback(dt);else if(G.stage===8)stage8Feedback(dt);else if(G.stage===9)stage9Feedback(dt);else if(G.stage===10)stage10Feedback(dt);else if(G.stage===11)stage11Feedback(dt);else if(G.stage===12)stage12Feedback(dt);else if(G.stage===13)stage13Feedback(dt);else if(G.stage===14)stage14Feedback(dt);
   // fear & audio
   const gd=Math.hypot(gh.x-p.x,gh.y-p.y);
   const tf=clamp(1-gd/9,0,1)*(gh.state==='chase'?1:.7);G.fear+=(tf-G.fear)*Math.min(1,dt*3);
@@ -2607,6 +2719,8 @@ function render3D(){
       else if(STAGE===4)c=(floor?FLOOR4:CEIL4).px[ti];
       else if(STAGE===7)c=(floor?FLOOR7:CEIL5).px[ti];
       else if(STAGE===9)c=(floor?FLOOR9:CEIL9).px[ti];
+      else if(STAGE===14){const lampC=!floor&&(Math.floor(fx)%4===2)&&(Math.floor(fy)-D14Y0)%6===3,tk=floor?CARPETS[carpetAt(fy)]:lampC?LAMP:CEIL14;c=tk.px[ti];
+        if(lampC&&tk.em[ti]){shade(i,c,.5+.4*fogf(rd),0,0);continue;}}
       else if(STAGE===13){const lampC=!floor&&(Math.floor(fx)%3===0)&&(Math.floor(fy)&1),tk=floor?FLOOR13:lampC?LAMP:CEIL13;c=tk.px[ti];
         if(lampC&&tk.em[ti]){shade(i,c,.5+.4*fogf(rd),0,0);continue;}}
       else if(STAGE===12){if(!floor){shade(i,SKY12.px[ti],.5,0,0);continue;}c=SNOW12.px[ti];}
@@ -2654,6 +2768,8 @@ function render3D(){
     else if(it.t==='cpn')sp.push({x:it.x,y:it.y,w:.36,h0:.25+Math.sin(t*2+it.x)*.03,h1:.55+Math.sin(t*2+it.x)*.03,tex:COUPON,glow:.3});
     else sp.push({x:it.x,y:it.y,w:.3,h0:0,h1:.22,tex:NOTE,glow:G.stage===6?.3:.1});}
   for(const sh of G.shriekers||[])sp.push({x:sh.x,y:sh.y,w:.75,h0:0,h1:.6,tex:SHRIEK,glow:.04+sh.pulse*.2});
+  if(G.stage===14){for(const d of G.doors){const wx=D14X0+d.x+.5,wy=D14Y0+(d.fy>d.y?d.y+1.2:d.y-.2);if(Math.abs(wx-p.x)<14&&Math.abs(wy-p.y)<14)sp.push({x:wx,y:wy,w:.38,h0:.62,h1:.84,tex:numTex(d.no),glow:.15});}
+    for(const m of G.guests||[])sp.push({x:m.x,y:m.y,w:.6,h0:0,h1:1.12,tex:GUEST,glow:.05});}
   if(G.stage===13){for(const b of G.beds)if(Math.abs(b.x-p.x)<16&&Math.abs(b.y-p.y)<16)sp.push({x:b.x,y:b.y,w:1.4,h0:0,h1:.6,tex:BED,glow:0});
     for(const m of G.nurses||[])sp.push({x:m.x,y:m.y,w:.6,h0:0,h1:1.1,tex:NURSE,glow:.05});}
   if(G.stage===12){const fk=Math.floor(t*7)&1;for(const f of G.fires)sp.push({x:f.x,y:f.y,w:.7,h0:0,h1:.7,tex:FIRE[fk],glow:.5});
@@ -2789,7 +2905,7 @@ function renderTop(){
         if(lv&&ft.em[fi]){buf[i]=ft.px[fi];continue;}
         const fl=dyn?lmAt(wx,cy+1.02)*ENV*(lv?1:.62)+BASE:(lv?lit:dim);shade(i,ft.px[fi],fl*.9,0,NOISE[(i+noff)&65535]*grain);continue;
       }
-      const tex=wall?(STAGE===9&&v===5?T[20]:v===3||v===5?T[v]:v===8?WTOP2:v===9?WTOP4:v===12?WTOP6:v===13?WTOP7:v===21?WTOP10:v===25?WTOP13:v===24?WTOP12:v===22?WTOP11:v===23?TENT_TOP:STAGE===8?WTOP2:WTOP):STAGE===13?FLOOR13:STAGE===12?SNOW12:STAGE===11?GRASS11:STAGE===10?FLOOR10:STAGE===9?FLOOR9:STAGE===8?FLOOR8:STAGE===7?FLOOR7:STAGE===4?FLOOR4:STAGE===2?(cy===TY?RAIL:cy===TY-1||cy===TY+1?BALLAST:CONC):FLOOR,lv=visD[i*4+(wall?0:1)]>127;
+      const tex=wall?(STAGE===9&&v===5?T[20]:v===3||v===5?T[v]:v===8?WTOP2:v===9?WTOP4:v===12?WTOP6:v===13?WTOP7:v===21?WTOP10:v===26?T[26]:v===27?T[27]:v===28?WTOP14:v===25?WTOP13:v===24?WTOP12:v===22?WTOP11:v===23?TENT_TOP:STAGE===8?WTOP2:WTOP):STAGE===14?CARPETS[carpetAt(wy)]:STAGE===13?FLOOR13:STAGE===12?SNOW12:STAGE===11?GRASS11:STAGE===10?FLOOR10:STAGE===9?FLOOR9:STAGE===8?FLOOR8:STAGE===7?FLOOR7:STAGE===4?FLOOR4:STAGE===2?(cy===TY?RAIL:cy===TY-1||cy===TY+1?BALLAST:CONC):FLOOR,lv=visD[i*4+(wall?0:1)]>127;
       if(lv&&tex.em[ti]){buf[i]=tex.px[ti];continue;}
       const ll=dyn?lmAt(wx,wy)*ENV*(lv?1:.62)+BASE:(lv?lit:dim);
       if(STAGE===10&&!wall&&cw[row+cx]){const pc=poolColor(wx,wy);shade(i,pc,ll*POOLK,0,NOISE[(i+noff)&65535]*grain);continue;}
@@ -2803,6 +2919,8 @@ function renderTop(){
     else{o.glow=.1;drawTop(it.x,it.y,.5,NOTE,.3,o);}}
   for(const sh of G.shriekers||[]){o.glow=.04+sh.pulse*.25;drawTop(sh.x,sh.y,.85,SHRIEK,0,o);}
   const tags=[];
+  if(G.stage===14){for(const d of G.doors){const wx=D14X0+d.x+.5,wy=D14Y0+(d.fy>d.y?d.y-.55:d.y+1.55);if(Math.abs(wx-cam.x)<W/Z&&Math.abs(wy-cam.y)<H/Z)drawTop(wx,wy,1.1,numTex(d.no),0,{noff,grain,glow:.2,always:true});}
+    for(const m of G.guests||[])drawTop(m.x,m.y,1.4,GUEST,0,{noff,grain,glow:.05});}
   if(G.stage===13){for(const b of G.beds)if(Math.abs(b.x-cam.x)<W/Z&&Math.abs(b.y-cam.y)<H/Z)drawTop(b.x,b.y,1.7,BED_TOP,0,{noff,grain,glow:0});
     for(const m of G.nurses||[])drawTop(m.x,m.y,1.4,NURSE,0,{noff,grain,glow:.05});}
   if(G.stage===12){const fk=Math.floor(t*7)&1;for(const o of G.prints)if(Math.abs(o.x-cam.x)<W/Z&&Math.abs(o.y-cam.y)<H/Z)drawTop(o.x,o.y,.35,PRINT,o.a,{noff,grain,glow:0});
@@ -2836,7 +2954,7 @@ function loop(now){
     const on=isOnline(),live=state==='play'||(on&&(state==='pause'||state==='note'||state==='end'));
     if(live)localUpdate(dt,state!=='play');
     // offline the world stops while paused; online it keeps going for everyone
-    if(!isClient()&&!G.over&&(state==='play'||on)){if(G.stage===2)updateTrain(dt);else if(G.stage===1)updateGhost(dt);else if(G.stage===4)updateRoomker(dt);else if(G.stage===5)update173(dt);else if(G.stage===6)updateMobs(dt);else if(G.stage===7)updateFakes(dt);else if(G.stage===8)updatePower(dt);else if(G.stage===9)updateDoll(dt);else if(G.stage===10)updateSwimmers(dt);else if(G.stage===11)updateParty(dt);else if(G.stage===12)updateSnow(dt);else if(G.stage===13)updateNurses(dt);}
+    if(!isClient()&&!G.over&&(state==='play'||on)){if(G.stage===2)updateTrain(dt);else if(G.stage===1)updateGhost(dt);else if(G.stage===4)updateRoomker(dt);else if(G.stage===5)update173(dt);else if(G.stage===6)updateMobs(dt);else if(G.stage===7)updateFakes(dt);else if(G.stage===8)updatePower(dt);else if(G.stage===9)updateDoll(dt);else if(G.stage===10)updateSwimmers(dt);else if(G.stage===11)updateParty(dt);else if(G.stage===12)updateSnow(dt);else if(G.stage===13)updateNurses(dt);else if(G.stage===14)updateGuests(dt);}
     if(on)netTick(dt);
     voiceTick();
     if(state==='play'||state==='note'||(on&&state==='pause'))render();
