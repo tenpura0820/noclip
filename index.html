@@ -47,6 +47,10 @@ body.shake #view{animation:shake .12s linear infinite}
 #stamp{position:absolute;right:calc(28px + env(safe-area-inset-right,0px));bottom:calc(26px + env(safe-area-inset-bottom,0px));font-size:14px;text-align:right;line-height:1.4}
 #exitDir{position:absolute;left:50%;top:calc(22px + env(safe-area-inset-top,0px));transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--exit);font-size:13px}
 #exitDir i{font-style:normal;font-size:22px;line-height:1;transition:transform .1s}
+#specBar{position:fixed;left:50%;top:calc(64px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:18;display:flex;align-items:center;gap:8px;font-family:var(--vhs);background:rgba(0,0,0,.6);border:1px solid var(--line);padding:6px 10px;white-space:nowrap}
+#specBar[hidden]{display:none}
+#specBar button{font-family:inherit;font-size:15px;color:var(--fg);background:rgba(255,255,255,.08);border:1px solid var(--line);padding:6px 12px;cursor:pointer}
+#specName{min-width:7em;text-align:center}
 #msg{position:absolute;left:50%;bottom:calc(76px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:min(560px,calc(100% - 40px));text-align:center;font-size:clamp(14px,2.4vw,18px);line-height:1.7;opacity:0;transition:opacity .6s}
 #msg.show{opacity:1}
 #pauseBtn{position:absolute;right:calc(26px + env(safe-area-inset-right,0px));top:calc(22px + env(safe-area-inset-top,0px));width:38px;height:38px;border:1px solid var(--line);background:rgba(0,0,0,.45);color:var(--fg);font-family:var(--vhs);font-size:13px;pointer-events:auto;cursor:pointer}
@@ -149,6 +153,7 @@ h1{font-family:var(--vhs);font-weight:400;font-size:clamp(56px,14vw,104px);margi
 <div id="scan"></div>
 <div id="vig"></div>
 <div id="fear"></div>
+<div id="specBar" hidden><button id="specPrev" aria-label="前の人">◀</button><span id="specName"></span><button id="specNext" aria-label="次の人">▶</button><button id="specEnd">結果へ</button></div>
 <div id="boxfx"></div>
 <canvas id="snowfx"></canvas>
 <div id="tint"></div>
@@ -258,6 +263,7 @@ h1{font-family:var(--vhs);font-weight:400;font-size:clamp(56px,14vw,104px);margi
     <p id="endStat"></p>
     <ul id="endList" class="plist"></ul>
     <div class="row"><button class="btn" id="retryBtn">もういちど</button><button class="btn ghost" id="titleBtn">タイトルへ</button></div>
+    <div class="row"><button class="btn ghost" id="specBtn" hidden>👁 生きている人を見る</button></div>
   </div>
 </div>
 
@@ -590,7 +596,7 @@ function trainFeedback(dt){
   else{AU.set(AU.trG,0);AU.set(AU.scG,0);}
 }
 function showBanner(t){const s=$('spotted');s.textContent=t;s.classList.remove('on');void s.offsetWidth;s.classList.add('on');}
-function startStage(n){if(n===16)startStage16();else if(n===15)startStage15();else if(n===14)startStage14();else if(n===13)startStage13();else if(n===12)startStage12();else if(n===11)startStage11();else if(n===10)startStage10();else if(n===9)startStage9();else if(n===8)startStage8();else if(n===7)startStage7();else if(n===6)startStage6();else if(n===5)startStage5();else if(n===4)startStage4();else if(n===3)startStage3();else startStage2();writeSave();refreshLoad();}
+function startStage(n){if(G)G.corpses=[];if(n===16)startStage16();else if(n===15)startStage15();else if(n===14)startStage14();else if(n===13)startStage13();else if(n===12)startStage12();else if(n===11)startStage11();else if(n===10)startStage10();else if(n===9)startStage9();else if(n===8)startStage8();else if(n===7)startStage7();else if(n===6)startStage6();else if(n===5)startStage5();else if(n===4)startStage4();else if(n===3)startStage3();else startStage2();writeSave();refreshLoad();}
 function startStage2(){
   if(!G)return;
   clearPoke();show('scare',false);document.body.classList.remove('shake');show('endOv',false);show('pauseOv',false);show('noteOv',false);
@@ -2194,7 +2200,7 @@ function startRound16(n){
   $('msg').classList.remove('show');msgT=0;
   STAGE=16;LMV=.78;FIN=false;SEED=(SEED^(0x160000+n))|0;CH=new Map();
   S16X0=Math.floor(START)-S16/2;S16Y0=Math.floor(START)-S16/2;
-  G.stage=16;G.round=n;G.r16next=false;G.over=false;G.toStage2=false;G.results=null;G.enraged=false;G.train=null;G.s3=null;G.s5=null;G.arrows=[];G.shriekers=[];G.mobs=[];G.fakes=[];G.suits=[];G.shadows=[];G.lights=null;G.rl=null;G.doll=null;G.fixed=[];G.swimmers=[];G.ripples=[];G.party=[];G.balloons=[];G.stalk=[];G.fires=[];G.prints=[];G.nurses=[];G.beds=[];G.guests=[];G.doors=[];
+  G.corpses=[];G.stage=16;G.round=n;G.r16next=false;G.over=false;G.toStage2=false;G.results=null;G.enraged=false;G.train=null;G.s3=null;G.s5=null;G.arrows=[];G.shriekers=[];G.mobs=[];G.fakes=[];G.suits=[];G.shadows=[];G.lights=null;G.rl=null;G.doll=null;G.fixed=[];G.swimmers=[];G.ripples=[];G.party=[];G.balloons=[];G.stalk=[];G.fires=[];G.prints=[];G.nurses=[];G.beds=[];G.guests=[];G.doors=[];
   G.taken=new Set();G.ltaken=new Set(['start']);G.exitPos=null;
   const r=mulberry(SEED^0x16f00d);
   // twenty things, spread out, none right at the start
@@ -2318,6 +2324,12 @@ const NOTES=[
 /* ---------- game state ---------- */
 let G=null,state='title',diff=1;
 const DIFF=[{spd:.82,see:.75,name:'やさしい'},{spd:1,see:1,name:'ふつう'},{spd:1.14,see:1.2,name:'こわい'}];
+const CORPSE=[];
+function corpseTex(slot){if(CORPSE[slot])return CORPSE[slot];const c=SUIT[slot]||'#f2c919';
+  return CORPSE[slot]=mkTex(g=>{g.fillStyle='rgba(70,8,8,.75)';g.beginPath();g.ellipse(34,50,26,9,0,0,7);g.fill();
+    g.fillStyle=c;g.fillRect(16,42,30,10);g.fillRect(44,44,12,4);g.fillRect(44,50,10,4);g.fillRect(20,38,14,4);g.fillRect(22,52,12,4);
+    g.fillStyle='#2b2b2b';g.fillRect(16,47,30,1);g.fillStyle=c;g.beginPath();g.arc(12,46,7,0,7);g.fill();g.fillStyle='#1d2a33';g.beginPath();g.ellipse(10,46,3.5,4.5,0,0,7);g.fill();
+    g.fillStyle='#ddd';g.fillRect(28,44,6,2);});}
 const SUIT=['#f2c919','#f28a19','#e8e8e0','#5fc44a','#4a8ff2','#e2493b','#a065e0','#8a8a8a'];
 const SPAWN=[[0,0],[1,0],[0,1],[1,1],[-1,0],[0,-1],[-1,1],[1,-1]];
 // d = {seed, diff, me, players:[{slot,name}]}
@@ -2536,6 +2548,7 @@ function setView(v){view=v;try{localStorage.setItem('noclip_view',v);}catch(e){}
 addEventListener('keydown',e=>{
   if(e.target&&(e.target.tagName==='INPUT'))return;
   if(state==='note'){closeNote();e.preventDefault();return;}
+  if(state==='spec'){if(e.code==='ArrowLeft'||e.code==='KeyA')specNext(-1);else if(e.code==='ArrowRight'||e.code==='KeyD'||e.code==='Space')specNext(1);else if(e.code==='Escape')exitSpec();else if(e.code==='KeyV')setView(view==='top'?'fps':'top');e.preventDefault();return;}
   keys[e.code]=true;
   if(state==='play'){
     if(STAGE===16&&(e.code==='KeyX'||e.code==='KeyB')){if(e.code==='KeyX')toggleCrouch();else toggleBox();keys[e.code]=false;e.preventDefault();return;}
@@ -2652,7 +2665,7 @@ function pause(){if(state!=='play')return;state='pause';$('saveMsg').textContent
   // the hand only comes for you once it has found you
   if(G.g.state==='chase'&&(!isOnline()||G.g.tslot===G.me))startPoke();}
 function resume(){clearPoke();state='play';show('pauseOv',false);last=performance.now();lockPtr();}
-function hideS3UI(){$('tint').className='';try{window.speechSynthesis&&speechSynthesis.cancel();}catch(e){}for(const id of['dlg','prompt','mash','mashTap','exeDist','tJump','tAct','tmpL','tmpW','tCrouch','tBox'])show(id,false);$('boxfx').className='';}
+function hideS3UI(){$('tint').className='';try{window.speechSynthesis&&speechSynthesis.cancel();}catch(e){}for(const id of['dlg','prompt','mash','mashTap','exeDist','tJump','tAct','tmpL','tmpW','tCrouch','tBox','specBar'])show(id,false);$('boxfx').className='';}
 $('mashTap').addEventListener('pointerdown',e=>{e.preventDefault();s3Action('Tap');});
 function toTitle(){hideS3UI();
   clearPoke();
@@ -2698,6 +2711,7 @@ function playerDone(slot,st){   // host or single player only
 }
 function applyDone(slot,st){
   const q=G.ps[slot];if(!q)return;const prev=q.status;q.status=st;if(prev==='alive')q.time=G.time;
+  if(st==='caught'&&prev==='alive'&&STAGE!==3){const mine=slot===G.me;(G.corpses=G.corpses||[]).push({x:mine?G.p.x:q.dx,y:mine?G.p.y:q.dy,a:mine?G.p.a:(q.a||0),slot});}
   if(slot===G.me){if(prev!=='alive')return;if(st==='caught')localCaught();else if(st==='escaped')localEscape();return;}
   if(st==='caught')msg(`${q.name}の信号が途絶えた……`,3.5);
   else if(st==='escaped')msg(`${q.name}が非常口から脱出した`,3.5);
@@ -2708,6 +2722,7 @@ function reachExit(){   // local player stepped into the exit
   else playerDone(G.me,'escaped');
 }
 function endScreenButtons(){
+  $('specBtn').hidden=!canSpec();
   const r=$('retryBtn');r.hidden=isClient();r.disabled=isHost()&&!G.over;r.textContent=isHost()?(G.over?'もういちど（みんなで）':'みんなを待っています…'):'もういちど';
 }
 function localEscape(){
@@ -2725,6 +2740,7 @@ function localEscape(){
 }
 function localCaught(){state='end';AU.silence();setTouchUI(false);if(document.pointerLockElement)document.exitPointerLock();placeLabels([]);jumpscare();}
 function showResults(res){
+  if(state==='spec')exitSpec();
   G.over=true;G.results=res;endScreenButtons();
   if(!isOnline())return;
   const ul=$('endList');ul.innerHTML='';
@@ -3138,6 +3154,7 @@ function render3D(){
   for(const m of G.mobs||[]){const jit=m.state==='wind'?(Math.random()-.5)*.08:0;sp.push({x:m.x+jit,y:m.y,w:.55,h0:0,h1:1.05,tex:mobTex(m,p.x,p.y),glow:0});}
   if(gh.wait<=0){const gb=Math.sin(t*2.2)*.04;if(STAGE===4)sp.push({x:gh.x,y:gh.y,w:.85,h0:0,h1:1.05,tex:ROOMKER,glow:0,ghost:true});else if(STAGE===5)sp.push({x:gh.x,y:gh.y,w:.6,h0:0,h1:1.1,tex:SCP173,glow:.05});else if(STAGE<4)sp.push({x:gh.x,y:gh.y,w:.9,h0:.06+gb,h1:.96+gb,tex:grinTex(t,gh.chaseT>=2),glow:.6,ghost:true});}
   for(const sg of trainSegs())sp.push({x:sg.x,y:TY+.5,w:2.9,h0:0,h1:1,tex:sg.head?TRAIN_FRONT:TRAIN_BODY,glow:.35});
+  if(STAGE!==3)for(const c of G.corpses||[])if(Math.abs(c.x-p.x)<20&&Math.abs(c.y-p.y)<20)sp.push({x:c.x,y:c.y,w:.95,h0:0,h1:.3,tex:corpseTex(c.slot),glow:0});
   for(const q of G.ps)if(q&&q.slot!==G.me&&q.status==='alive'){const bx=G.stage===16&&q.box;sp.push({x:q.dx,y:q.dy,w:bx?.6:.5,h0:0,h1:bx?.55:G.stage===16&&q.crouch?.6:.88,tex:bx?BOX16:HAZ_FRONT[q.slot],glow:0,who:q});}
   for(const s of sp)s.d=(s.x-p.x)**2+(s.y-p.y)**2;sp.sort((a,b)=>b.d-a.d);
   const tags=[];
@@ -3292,6 +3309,7 @@ function renderTop(){
   if(G.stage===7)for(const su of G.suits||[])drawTop(su.x,su.y,1.1,SUIT_TOP,su.a,{noff,grain,glow:0});
   if(G.stage===7)for(const f of G.fakes||[]){if(isFakeMon(f)){drawTop(f.x,f.y,1.5,WHITE_TOP,f.a,{noff,grain,glow:.15});continue;}drawTop(f.x,f.y,1.25,HAZ_TOP[f.slot],f.a,{noff,grain,glow:0});
     lightAt(f.x,f.y,.05);if(LV)tags.push({name:(G.ps[f.slot]||{name:'あなた'}).name,slot:f.slot,mirror:true,x:W/2+(f.x-cam.x)*Z,y:H/2+(f.y-cam.y)*Z-12*QS()});}
+  for(const c of G.corpses||[])if(Math.abs(c.x-cam.x)<W/Z&&Math.abs(c.y-cam.y)<H/Z)drawTop(c.x,c.y,1.4,corpseTex(c.slot),c.a,{noff,grain,glow:0});
   for(const q of G.ps)if(q&&q.slot!==G.me&&q.status==='alive'){if(G.stage===16&&q.box)drawTop(q.dx,q.dy,1.1,BOX16T,0,{noff,grain,glow:0});else drawTop(q.dx,q.dy,G.stage===16&&q.crouch?1:1.25,HAZ_TOP[q.slot],q.a,{noff,grain,glow:0});
     lightAt(q.dx,q.dy,.05);if(LV)tags.push({name:q.name,slot:q.slot,x:W/2+(q.dx-cam.x)*Z,y:H/2+(q.dy-cam.y)*Z-12*QS()});}
   if(G.ps[G.me].status==='alive'){if(G.stage===16&&p.box)drawTop(p.x,p.y,1.1,BOX16T,0,{noff,grain,glow:0,always:true});else drawTop(p.x,p.y,G.stage===16&&p.crouch?1:1.25,HAZ_TOP[G.me],p.a,{noff,grain,glow:0,always:true});}
@@ -3305,17 +3323,27 @@ function renderTop(){
 /* ---------- title backdrop: yellow VHS static ---------- */
 function renderTitleBg(){const t=performance.now()/1000,o=((t*997)|0)*13;for(let i=0;i<W*H;i++){const n=(NOISE[(i+o)&65535]+.5)*22+8;buf[i]=0xff000000|((n*.35)|0)<<16|((n*.85)|0)<<8|(n|0);}ctx.putImageData(img,0,0);}
 
+// after you are caught online you can follow the players who are still alive
+const canSpec=()=>isOnline()&&G&&STAGE!==3&&!G.over&&G.ps[G.me]&&G.ps[G.me].status==='caught'&&alivePs().some(q=>q.slot!==G.me);
+function startSpec(){if(!canSpec())return;state='spec';G.specI=-1;specNext(1);show('endOv',false);show('scare',false);show('hud',true);setTouchUI(false);show('specBar',true);$('fear').style.opacity=0;}
+function specNext(d){const al=alivePs().filter(q=>q.slot!==G.me).sort((a,b)=>a.slot-b.slot);if(!al.length){exitSpec();return;}
+  let i=al.findIndex(q=>q.slot===G.specI);i=i<0?0:(i+d+al.length)%al.length;G.specI=al[i].slot;$('specName').textContent=`観戦中：${al[i].name}`;}
+function exitSpec(){if(state!=='spec')return;state='end';show('specBar',false);show('hud',false);show('endOv',true);endScreenButtons();}
+function specCam(){const q=G.ps[G.specI];if(!q||q.status!=='alive'){specNext(1);if(state!=='spec')return;}
+  const t=G.ps[G.specI];G.p.x=t.dx;G.p.y=t.dy;G.p.a=t.a||0;G.p.pitch=0;}
+$('specBtn').onclick=startSpec;$('specPrev').onclick=()=>specNext(-1);$('specNext').onclick=()=>specNext(1);$('specEnd').onclick=exitSpec;
 let last=performance.now();
 function loop(now){
   const dt=Math.min(.05,(now-last)/1000);last=now;
   if(state==='title')renderTitleBg();
   else if(G){
-    const on=isOnline(),live=state==='play'||(on&&(state==='pause'||state==='note'||state==='end'));
+    const on=isOnline(),live=state==='play'||(on&&(state==='pause'||state==='note'||state==='end'||state==='spec'));
     if(live)localUpdate(dt,state!=='play');
     // offline the world stops while paused; online it keeps going for everyone
     if(!isClient()&&!G.over&&(state==='play'||on)){if(G.stage===2)updateTrain(dt);else if(G.stage===1)updateGhost(dt);else if(G.stage===4)updateRoomker(dt);else if(G.stage===5)update173(dt);else if(G.stage===6)updateMobs(dt);else if(G.stage===7)updateFakes(dt);else if(G.stage===8)updatePower(dt);else if(G.stage===9)updateDoll(dt);else if(G.stage===10)updateSwimmers(dt);else if(G.stage===11)updateParty(dt);else if(G.stage===12)updateSnow(dt);else if(G.stage===13)updateNurses(dt);else if(G.stage===14)updateGuests(dt);else if(G.stage===15)updateFlood(dt);else if(G.stage===16)update16(dt);}
     if(on)netTick(dt);
     voiceTick();
+    if(state==='spec'){specCam();if(state==='spec')render();}
     if(state==='play'||state==='note'||(on&&state==='pause'))render();
   }
   requestAnimationFrame(loop);
