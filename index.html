@@ -2366,17 +2366,37 @@ const ERR_JA={'peer-unavailable':'その部屋が見つかりません。コー�
 const errJa=t=>(ERR_JA[t]||'オンラインのエラーが起きました')+`（${t}）`;
 // apps like LINE open links in their own browser, where online play often fails
 const IN_APP=/Line\/|FBAN|FBAV|Instagram|Twitter|MicroMessenger|KAKAOTALK/i.test(navigator.userAgent);
-async function hostRoom(){
-  AU.init();netStatus('部屋を準備しています…');await loadPeer();
+// Switching to LINE (or any other app) to send the invite puts this page in the background, and phones then
+// cut its link to the connection server. The room is kept: on coming back we reconnect under the same code,
+// so the link already sent still works.
+let HOST_CODE='',hostTries=0;
+async function hostRoom(again){
+  AU.init();netStatus(again?'部屋につなぎ直しています…':'部屋を準備しています…');await loadPeer();
   if(!window.Peer)return netStatus('オンライン機能を読み込めませんでした（インターネット接続を確認してね）');
+  if(typeof again!=='string')again='';
   leaveRoom(true);
-  const code=[...Array(5)].map(()=>'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.random()*32|0]).join('');
+  const code=again||[...Array(5)].map(()=>'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.random()*32|0]).join('');
+  HOST_CODE=code;
   const peer=new Peer('noclip-'+code,PEER_OPTS);NET.peer=peer;
-  peer.on('open',()=>{NET.mode='host';NET.code=code;myName();lobbyUpdate();setOnlineUI();netStatus('友達に部屋コードを教えてね。集まったら「みんなで開始」');});
+  peer.on('open',()=>{if(NET.peer!==peer)return;hostTries=0;NET.mode='host';NET.code=code;myName();lobbyUpdate();setOnlineUI();
+    netStatus(again?'部屋につなぎ直しました。友達はさっきのリンクのまま入れます':'友達に部屋コードを教えてね。集まったら「みんなで開始」');});
   peer.on('connection',conn=>{conn.on('data',d=>hostRecv(conn,d));conn.on('close',()=>hostDrop(conn));});
   peer.on('call',onCall);
-  peer.on('error',err=>{if(err.type==='unavailable-id'){hostRoom();return;}netStatus(errJa(err.type));});
+  peer.on('disconnected',()=>{if(NET.peer!==peer||peer.destroyed)return;netStatus('接続サーバーにつなぎ直しています…');setTimeout(()=>reviveHost(peer),1200);});
+  peer.on('error',err=>{if(NET.peer!==peer)return;
+    if(err.type==='unavailable-id'){
+      // our own old connection may still hold the code for a moment: try the same code again before giving up on it
+      if(again&&hostTries++<8){setTimeout(()=>{if(HOST_CODE===code)hostRoom(code);},2500);return;}
+      hostRoom();return;}
+    if(['network','socket-error','socket-closed','disconnected','server-error'].indexOf(err.type)>=0){netStatus('接続サーバーにつなぎ直しています…');setTimeout(()=>reviveHost(peer),1500);return;}
+    netStatus(errJa(err.type));});
 }
+function reviveHost(peer){if(NET.peer!==peer||!HOST_CODE)return;
+  if(peer.destroyed){hostRoom(HOST_CODE);return;}
+  if(peer.disconnected){try{peer.reconnect();}catch(e){hostRoom(HOST_CODE);}}}
+document.addEventListener('visibilitychange',()=>{if(document.hidden)return;const p=NET.peer;
+  if(HOST_CODE&&(NET.mode==='host'||(p&&p.id==='noclip-'+HOST_CODE))){if(!p||p.destroyed)hostRoom(HOST_CODE);else if(p.disconnected)reviveHost(p);}
+  else if(p&&NET.mode==='client'&&p.disconnected&&!p.destroyed){try{p.reconnect();}catch(e){}}});
 function hostRecv(conn,d){
   if(!d||!d.t)return;
   if(d.t==='hello'){
@@ -2408,7 +2428,7 @@ function sendSlot(slot,d){for(const[pid,m]of NET.members)if(m.slot===slot){const
 function lobbyList(){return[{name:myName(),slot:0,host:1,pid:NET.peer&&NET.peer.id},...[...NET.members].map(([pid,m])=>({name:m.name,slot:m.slot,pid}))].sort((a,b)=>a.slot-b.slot);}
 function lobbyUpdate(){if(!isHost())return;const list=lobbyList();renderLobby(list);setRoster(list);bc({t:'lobby',list,code:NET.code});setOnlineUI();}
 async function joinRoom(){
-  AU.init();const code=$('inRoom').value.trim().toUpperCase();if(code.length<4)return netStatus('部屋コードを入れてね');
+  HOST_CODE='';AU.init();const code=$('inRoom').value.trim().toUpperCase();if(code.length<4)return netStatus('部屋コードを入れてね');
   netStatus('接続しています…');await loadPeer();
   if(!window.Peer)return netStatus('オンライン機能を読み込めませんでした（インターネット接続を確認してね）');
   leaveRoom(true);
@@ -2448,6 +2468,7 @@ function clientRecv(d){
   else if(d.t==='stagesoon'){G.toStage2=true;if(G.ps[G.me].status==='alive')msg(`${d.name}が非常口を抜けた――足元が、ふっと抜ける。`,3);}
 }
 function leaveRoom(silent){
+  if(!silent)HOST_CODE='';
   voiceReset();
   try{NET.peer&&NET.peer.destroy();}catch(e){}
   NET.peer=null;NET.conn=null;NET.conns.clear();NET.members.clear();NET.mode=null;NET.code='';
@@ -2652,7 +2673,9 @@ $('pauseBtn').onclick=pause;$('dlg').addEventListener('pointerdown',e=>{e.preven
 // keep the friends-only key (?key=…) so the invite opens for them too
 function inviteURL(){const k=new URLSearchParams(location.search).get('key');return location.origin+location.pathname+'?'+(k?'key='+encodeURIComponent(k)+'&':'')+'room='+NET.code;}
 const isLocalHost=()=>/^(localhost|127\.|\[::1\])/.test(location.hostname);
-$('inviteBtn').onclick=async()=>{const u=inviteURL();let ok=false;try{await navigator.clipboard.writeText(u);ok=true;}catch(e){}
+$('inviteBtn').onclick=async()=>{const u=inviteURL();let ok=false;
+  if(navigator.share&&isTouch){try{await navigator.share({title:'NOCLIP',text:'NOCLIP いっしょに遊ぼう！ 部屋コード '+NET.code,url:u});netStatus('送りました。友達が入るのを待っています（このページは閉じないでね）');return;}catch(e){if(e&&e.name==='AbortError')return;}}
+  try{await navigator.clipboard.writeText(u);ok=true;}catch(e){}
   netStatus((ok?'コピーしました：':'このリンクを送ってね：')+u+(isLocalHost()?'\n※ localhost のリンクは自分のPCでしか開けません。start-noclip-link.ps1 で作ったリンクから遊んでね':''));};
 if(IN_APP)setTimeout(()=>netStatus('⚠ アプリ内のブラウザで開いています。オンラインに入れないときは、右上のメニューから「ブラウザで開く」（Chrome / Safari）を選んでね'),50);
 try{const rm=new URLSearchParams(location.search).get('room');if(rm){$('inRoom').value=rm.toUpperCase().slice(0,5);if(!IN_APP)netStatus('招待されました。名前を入れて「入る」を押してね');}}catch(e){}
