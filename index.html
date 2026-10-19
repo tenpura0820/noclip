@@ -2115,8 +2115,8 @@ function stage15Feedback(dt){
   G.wfT=(G.wfT||0)-dt;if(G.wfT<=0){G.wfT=dp>.8?.5:2.2;if(dp>.8)AU.tone(500+Math.random()*400,.06,.05,'sine',0,900);else AU.noise(2.4,500,.6,.08,'bandpass');}
   if(a<35)$('fear').style.opacity=Math.max(+$('fear').style.opacity||0,.5*(1-a/35));
 }
-/* ---------- stage 16: the factory, in three rounds ---------- */
-// A 300 m square of rooms. Each round you gather 20 things while monsters hunt you:
+/* ---------- stage 16: the amusement park, in three rounds ---------- */
+// A 300 m square of a night-time amusement park, a maze of booths and fences. Each round you gather 20 things while monsters hunt you:
 //   round 1: 20 lamps     — blue monsters (they see you, they chase you)
 //   round 2: 20 batteries — blue + green (green is blind and hunts by sound)
 //   round 3: 20 coal      — blue + green + orange (orange first draws its route as an orange line,
@@ -2125,13 +2125,15 @@ function stage15Feedback(dt){
 // monster saw you get in, the blue ones cannot find you — but green and orange still take you.
 const S16=300;let S16X0=0,S16Y0=0;
 const R16=[{n:'ランプ',col:'#ffd35a'},{n:'電池',col:'#7ad0ff'},{n:'石炭',col:'#9a9a9a'}];
-T[30]=mkTex(g=>{g.fillStyle='#5d5a52';g.fillRect(0,0,64,64);g.fillStyle='#4b4842';for(let x=0;x<64;x+=8)g.fillRect(x,0,3,64);
-  g.fillStyle='rgba(140,70,30,.35)';for(let i=0;i<10;i++)g.fillRect(rnd(64),rnd(64),2+rnd(6),1+rnd(10));
-  g.fillStyle='#d9b23a';g.fillRect(0,50,64,4);g.fillStyle='#222';for(let x=0;x<64;x+=10)g.fillRect(x,50,5,4);grit(g,14);});
-const WTOP16=mkTex(g=>{g.fillStyle='#55524b';g.fillRect(0,0,64,64);g.strokeStyle='rgba(217,178,58,.6)';g.lineWidth=2;g.strokeRect(2,2,60,60);grit(g,8);});
-const FLOOR16=mkTex(g=>{g.fillStyle='#77746c';g.fillRect(0,0,64,64);for(let i=0;i<500;i++){g.fillStyle=`rgba(${rnd(2)?30:150},${rnd(2)?30:140},20,.12)`;g.fillRect(rnd(64),rnd(64),1+rnd(2),1);}
-  g.fillStyle='rgba(0,0,0,.18)';g.beginPath();g.ellipse(20+rnd(24),20+rnd(24),8+rnd(8),5+rnd(5),rnd(3),0,7);g.fill();grit(g,10);});
-const CEIL16=mkTex(g=>{g.fillStyle='#3e3d39';g.fillRect(0,0,64,64);g.fillStyle='#2e2d2a';g.fillRect(0,28,64,8);grit(g,8);});
+T[30]=mkTex(g=>{for(let i=0;i<8;i++){g.fillStyle=i&1?'#f3efe6':'#d3333a';g.fillRect(i*8,8,8,34);}
+  g.fillStyle='#2a1a3a';g.fillRect(0,0,64,8);g.fillStyle='#ffe27a';for(let x=4;x<64;x+=8){g.beginPath();g.arc(x,4,2.2,0,7);g.fill();}
+  g.fillStyle='#4a2e5e';g.fillRect(0,42,64,22);g.fillStyle='#6a4a80';for(let x=0;x<64;x+=16)g.fillRect(x+2,46,12,14);
+  g.fillStyle='#ffd35a';g.fillRect(0,42,64,2);grit(g,10);},(r,gg,b)=>r>250&&gg>215&&b<140);
+const WTOP16=mkTex(g=>{for(let i=0;i<8;i++){g.fillStyle=i&1?'#f3efe6':'#d3333a';g.fillRect(i*8,0,8,64);}g.strokeStyle='#2a1a3a';g.lineWidth=3;g.strokeRect(1.5,1.5,61,61);
+  g.fillStyle='#ffe27a';for(let x=6;x<64;x+=12){g.beginPath();g.arc(x,4,2,0,7);g.arc(x,60,2,0,7);g.fill();}});
+const FLOOR16=mkTex(g=>{g.fillStyle='#8a7f86';g.fillRect(0,0,64,64);for(let y=0;y<64;y+=8)for(let x=((y/8)&1)*8;x<64;x+=16){g.fillStyle=['#a0848c','#93868c','#b0929a'][rnd(3)];g.fillRect(x+1,y+1,14,6);}
+  for(let i=0;i<6;i++){g.fillStyle=['#ff5a7a','#ffd35a','#5ad0ff','#7aff8a'][rnd(4)];g.fillRect(rnd(64),rnd(64),2,1);}grit(g,10);});
+const CEIL16=mkTex(g=>{g.fillStyle='#10142e';g.fillRect(0,0,64,64);for(let i=0;i<14;i++){g.fillStyle=rnd(3)?'#c8cff5':'#fff6c0';g.fillRect(rnd(64),rnd(64),1,1);}});
 const ITEM16=[
   mkTex(g=>{g.fillStyle='#3a3a3a';g.fillRect(24,10,16,4);g.fillRect(22,54,20,6);g.strokeStyle='#3a3a3a';g.lineWidth=2;g.strokeRect(22,14,20,40);
     g.fillStyle='#ffd35a';g.fillRect(24,16,16,36);g.fillStyle='#fff6c8';g.fillRect(29,24,6,20);},(r,gg,b)=>r>240&&gg>200),
@@ -2181,15 +2183,15 @@ function startRound16(n){
   $('talLabel').textContent=R16[n-1].n;$('slots').textContent='0 / 20';$('slots').parentNode.hidden=false;
   $('stamp').innerHTML=(isOnline()?`ONLINE ${G.ps.filter(Boolean).length}P`:'SP')+`　STAGE 16-${n}<br>OCT.11 1996`;
   state='play';show('hud',true);setTouchUI(true);show('tCrouch',isTouch);show('tBox',isTouch);$('boxfx').className='';
-  const c=$('stageCard');c.innerHTML=`<b>STAGE 16-${n}</b><span>― ${R16[n-1].n}を集めろ ―</span>`;c.classList.remove('on');void c.offsetWidth;c.classList.add('on');
-  msg(n===1?'ランプを20個集めろ。青い化物に見つかるな。（X：しゃがむ　B：段ボール）'
+  const c=$('stageCard');c.innerHTML=`<b>STAGE 16-${n}</b><span>― 遊園地：${R16[n-1].n}を集めろ ―</span>`;c.classList.remove('on');void c.offsetWidth;c.classList.add('on');
+  msg(n===1?'夜の遊園地。ランプを20個集めろ。青い化物に見つかるな。'+(isTouch?'（伏：しゃがむ　箱：段ボール）':'（X：しゃがむ　B：段ボール）')
     :n===2?'電池を20個集めろ。緑の化物は目が見えない――音で来る。しゃがんでいれば捕まらない。'
     :'石炭を20個集めろ。オレンジの線が出たら、その線から見えない場所へ隠れろ！',8);
   lockPtr();
 }
 // local controls
 function toggleCrouch(){const p=G.p;if(G.ps[G.me].status!=='alive')return;p.crouch=!p.crouch;if(p.crouch)p.box=false;
-  msg(p.crouch?'しゃがんだ（静か・緑の化物に捕まらない・0.7倍）':'立ち上がった',1.6);$('boxfx').className=p.box?'box':p.crouch?'crouch':'';$('tCrouch').classList.toggle('on',p.crouch);$('tBox').classList.toggle('on',p.box);}
+  msg(p.crouch?'しゃがんだ（静か・緑の化物に捕まらない・0.7倍）':'立ち上がった',1.6);AU.click();$('boxfx').className=p.box?'box':p.crouch?'crouch':'';$('tCrouch').classList.toggle('on',p.crouch);$('tBox').classList.toggle('on',p.box);}
 function toggleBox(){const p=G.p;if(G.ps[G.me].status!=='alive')return;p.box=!p.box;if(p.box)p.crouch=false;AU.page();
   msg(p.box?'段ボールをかぶった（0.5倍・入るところを見られていなければ、青い化物にはバレない）':'段ボールから出た',2);$('boxfx').className=p.box?'box':p.crouch?'crouch':'';$('tCrouch').classList.toggle('on',p.crouch);$('tBox').classList.toggle('on',p.box);}
 // orange: the route it is about to run, as a list of cells
@@ -2659,11 +2661,11 @@ function localEscape(){
   $('endT').textContent='EXIT';$('endT').className='';$('fear').style.opacity=0;show('hud',false);
   if(G.stage<16){
     $('endText').innerHTML=['','非常口を抜けた――はずだった。<br>足元に、冷たい鉄のレールが二本、闇の奥へ伸びている。','線路の果ての非常口を抜けた。<br>……世界が、平べったくなった気がする。',
-      'エレベーターは止まらずに、下へ、下へ。<br>扉が開くと、そこは真っ暗だった。','非常口の先は、コンクリートの長い廊下だった。<br>廊下の先に、何かが立っている。','扉の向こうは、白い廊下だった。<br>白い人たちが、こっちを向いて待っている。<br>――顔を、よく見てあげて。','最後の扉――のはずだった。<br>開けた先は、鏡だらけの部屋だった。','鏡の向こうは、コンクリートの地下駐車場だった。<br>遠くで、送電塔の唸る音がする。','スロープの先は、空の絵が描かれた大きな部屋だった。<br>遠くの壁の前に、大きな人形が立っている。','GOALの壁の向こうは、白いタイルと水の部屋だった。<br>水面に、何かの波紋が広がっている。','プールの扉の先は、明るい草原だった。<br>風船とパーティーの飾りが、風に揺れている。<br>遠くで、誰かが笑っている。','緑の扉を開けると、冷たい風が吹きこんできた。<br>一面の雪と、黒い木々。<br>振り返ると、扉はもう雪に埋もれていた。','山小屋の扉を開けると、消毒液の匂いがした。<br>ピッ……ピッ……と、心電図の音が聞こえる。<br>ここは、夜の病院だ。','非常口の先は、じゅうたんの敷かれたホテルの廊下だった。<br>自分の部屋の鍵を、どこかで落としてしまったらしい。<br>廊下の奥で、誰かの足音がする。','部屋の扉の先は、地下鉄の駅のホームだった。<br>足元に、冷たい水が流れこんでくる。<br>――水位が、上がっている。','階段の先は、錆びた鉄の匂いのする巨大な工場だった。<br>どこまでも続く部屋の奥で、青い何かがこっちを見た。'][G.stage];
+      'エレベーターは止まらずに、下へ、下へ。<br>扉が開くと、そこは真っ暗だった。','非常口の先は、コンクリートの長い廊下だった。<br>廊下の先に、何かが立っている。','扉の向こうは、白い廊下だった。<br>白い人たちが、こっちを向いて待っている。<br>――顔を、よく見てあげて。','最後の扉――のはずだった。<br>開けた先は、鏡だらけの部屋だった。','鏡の向こうは、コンクリートの地下駐車場だった。<br>遠くで、送電塔の唸る音がする。','スロープの先は、空の絵が描かれた大きな部屋だった。<br>遠くの壁の前に、大きな人形が立っている。','GOALの壁の向こうは、白いタイルと水の部屋だった。<br>水面に、何かの波紋が広がっている。','プールの扉の先は、明るい草原だった。<br>風船とパーティーの飾りが、風に揺れている。<br>遠くで、誰かが笑っている。','緑の扉を開けると、冷たい風が吹きこんできた。<br>一面の雪と、黒い木々。<br>振り返ると、扉はもう雪に埋もれていた。','山小屋の扉を開けると、消毒液の匂いがした。<br>ピッ……ピッ……と、心電図の音が聞こえる。<br>ここは、夜の病院だ。','非常口の先は、じゅうたんの敷かれたホテルの廊下だった。<br>自分の部屋の鍵を、どこかで落としてしまったらしい。<br>廊下の奥で、誰かの足音がする。','部屋の扉の先は、地下鉄の駅のホームだった。<br>足元に、冷たい水が流れこんでくる。<br>――水位が、上がっている。','階段の先は、閉園後の夜の遊園地だった。<br>止まったメリーゴーランドの向こうで、青い何かがこっちを見た。'][G.stage];
     $('endStat').textContent=(isOnline()?'全員で ':'')+`STAGE ${G.stage+1} へ……`;
     show('endOv',true);$('retryBtn').hidden=true;return;}
   const best=!isOnline()&&saveBest(G.time);
-  $('endText').innerHTML='最後の石炭を炉に投げこむと、工場じゅうの機械が動き出した。<br>ランプが灯り、電池が唸り、炉が赤く燃える。<br>開いたシャッターの向こうに、朝の光が見えた。';
+  $('endText').innerHTML='最後の石炭を汽車にくべると、遊園地じゅうの明かりが灯った。<br>観覧車が回り出し、出口のゲートがゆっくり開く。<br>メリーゴーランドの音楽が、背中のほうで遠ざかっていった。';
   $('endStat').textContent=`${DIFF[diff].name}　脱出時間 ${fmt(G.time)}${best?'　最速記録！':''}`;
   show('endOv',true);endScreenButtons();
 }
@@ -2798,7 +2800,7 @@ function jumpscare(){
       g.fillStyle='#000';g.fillRect(0,h*.42,w,h*.16);g.fillStyle='#fff';g.font=`${Math.round(h*.08)}px DotGothic16, monospace`;g.textAlign='center';g.textBaseline='middle';g.fillText('NO SIGNAL',w/2,h/2);
       AU.tone(1000,.9,.12,'sine');
       setTimeout(()=>{if(state!=='end')return;show('scare',false);$('endT').textContent='信号途絶';$('endT').className='dead';
-        $('endText').innerHTML=STAGE===16?'工場の機械の音に、足音がかき消されていた。<br>振り向いたときには、もう遅かった。<br>集めたものが、床に散らばった。':STAGE===15?'息が、続かなかった。<br>濁った水の中で、駅の案内放送だけが聞こえていた。<br>「――次は、終点です」':STAGE===14?'冷たい手が、あなたの鍵を取り上げた。<br>「チェックアウトは、まだですよ」<br>扉が閉まり、廊下はまた静かになった。':STAGE===13?'ナースが、やさしく手首をつかんだ。<br>「検温の時間ですよ」<br>……心電図の音が、ピーーーと長く鳴った。':STAGE===12?((G.temps&&G.temps[G.me]<=.5)?'指先の感覚が消えて、膝から雪に沈んだ。<br>吹雪が、すぐにあなたを白く埋めた。<br>その上を、細長い足跡が通りすぎていく。':'足跡の先に、白くて細長いものが立っていた。<br>長い腕が、ゆっくりと伸びてきた。<br>雪の上の足跡は、そこで途切れている。'):STAGE===11?'たくさんの笑顔に囲まれて、風船を手渡された。<br>「パーティーへようこそ =)」<br>……もう、ここから出たいとは思わない。':STAGE===10?'足首をつかまれ、水の中に引きずり込まれた。<br>水面の波紋は、すぐに消えた。':STAGE===9?'乾いた音がひとつ。<br>人形は、また壁のほうを向いて歌い始めた。':STAGE===8?'暗闇の中で、目と口だけが笑った。<br>次に明かりがついたとき、そこには誰もいなかった。':STAGE===7?'白い化物は、脱ぎ捨てた服の代わりに、あなたを着た。<br>鏡の中を、あなたの姿をした何かが歩いていく。':STAGE===6?'白い腕が、肩をつかんだ。<br>最後に見たのは、真っ黒な口の奥だった。':STAGE===5?'首の後ろで、乾いた音がした。<br>まばたきをした覚えは、ない。':STAGE===4?'耳元で、湿った息の音がした。<br>あれには、最初から全部聞こえていた。':STAGE===3?'赤い目が、すぐ目の前で笑った。<br>「Good show.」':STAGE===2?'赤い車体と無数の脚が、視界を埋め尽くした。<br>レールの上に、カメラだけが転がっている。':'最後に映っていたのは、湿ったカーペットの上を<br>引きずられていく視界だった。<br>テープは、まだ回り続けている。';
+        $('endText').innerHTML=STAGE===16?'遊園地の音楽に、足音がかき消されていた。<br>振り向いたときには、もう遅かった。<br>集めたものが、石畳に散らばった。':STAGE===15?'息が、続かなかった。<br>濁った水の中で、駅の案内放送だけが聞こえていた。<br>「――次は、終点です」':STAGE===14?'冷たい手が、あなたの鍵を取り上げた。<br>「チェックアウトは、まだですよ」<br>扉が閉まり、廊下はまた静かになった。':STAGE===13?'ナースが、やさしく手首をつかんだ。<br>「検温の時間ですよ」<br>……心電図の音が、ピーーーと長く鳴った。':STAGE===12?((G.temps&&G.temps[G.me]<=.5)?'指先の感覚が消えて、膝から雪に沈んだ。<br>吹雪が、すぐにあなたを白く埋めた。<br>その上を、細長い足跡が通りすぎていく。':'足跡の先に、白くて細長いものが立っていた。<br>長い腕が、ゆっくりと伸びてきた。<br>雪の上の足跡は、そこで途切れている。'):STAGE===11?'たくさんの笑顔に囲まれて、風船を手渡された。<br>「パーティーへようこそ =)」<br>……もう、ここから出たいとは思わない。':STAGE===10?'足首をつかまれ、水の中に引きずり込まれた。<br>水面の波紋は、すぐに消えた。':STAGE===9?'乾いた音がひとつ。<br>人形は、また壁のほうを向いて歌い始めた。':STAGE===8?'暗闇の中で、目と口だけが笑った。<br>次に明かりがついたとき、そこには誰もいなかった。':STAGE===7?'白い化物は、脱ぎ捨てた服の代わりに、あなたを着た。<br>鏡の中を、あなたの姿をした何かが歩いていく。':STAGE===6?'白い腕が、肩をつかんだ。<br>最後に見たのは、真っ黒な口の奥だった。':STAGE===5?'首の後ろで、乾いた音がした。<br>まばたきをした覚えは、ない。':STAGE===4?'耳元で、湿った息の音がした。<br>あれには、最初から全部聞こえていた。':STAGE===3?'赤い目が、すぐ目の前で笑った。<br>「Good show.」':STAGE===2?'赤い車体と無数の脚が、視界を埋め尽くした。<br>レールの上に、カメラだけが転がっている。':'最後に映っていたのは、湿ったカーペットの上を<br>引きずられていく視界だった。<br>テープは、まだ回り続けている。';
         if(isOnline()&&G.stage===1)$('endText').innerHTML+='<br>――誰かが脱出できれば、まだ終わりじゃない。';
         $('endStat').textContent=`${DIFF[diff].name}　STAGE ${G.stage}　記録時間 ${tc(G.ps[G.me].time||G.time)}`;show('endOv',true);$('fear').style.opacity=0;endScreenButtons();},1200);
     }})(t0);
@@ -2994,7 +2996,7 @@ function render3D(){
       else if(STAGE===4)c=(floor?FLOOR4:CEIL4).px[ti];
       else if(STAGE===7)c=(floor?FLOOR7:CEIL5).px[ti];
       else if(STAGE===9)c=(floor?FLOOR9:CEIL9).px[ti];
-      else if(STAGE===16){const lampC=!floor&&(Math.floor(fx)%3===1)&&(Math.floor(fy)%3===1),tk=floor?FLOOR16:lampC?LAMP:CEIL16;c=tk.px[ti];
+      else if(STAGE===16){if(!floor){shade(i,CEIL16.px[ti],.75,0,0);continue;}const lampC=false,tk=FLOOR16;c=tk.px[ti];
         if(floor&&OG){const gx=Math.floor(fx)-aox,gy=Math.floor(fy)-aoy;if(gx>=0&&gy>=0&&gx<AW&&gy<AW&&onOrange(OG,AW,gx,gy,fx-Math.floor(fx),fy-Math.floor(fy))){shade(i,ORANGE_C,.95,0,0);continue;}}
         if(lampC&&tk.em[ti]){shade(i,c,.5+.4*fogf(rd),0,0);continue;}}
       else if(STAGE===15){const gx=Math.floor(fx)-aox,gy=Math.floor(fy)-aoy;
