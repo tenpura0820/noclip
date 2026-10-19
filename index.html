@@ -2779,16 +2779,26 @@ function callAll(){
     try{const c=NET.peer.call(pid,VOICE.stream);if(!c)continue;VOICE.out.set(pid,c);const off=()=>VOICE.out.delete(pid);c.on('close',off);c.on('error',off);}catch(e){}}
 }
 function onCall(call){call.answer();call.on('stream',st=>addIn(call.peer,st));call.on('close',()=>dropIn(call.peer));}
+// The voice plays through a real <audio> element in the page. Feeding remote WebRTC audio into Web Audio is
+// silent on iPhones and on some Android phones, so Web Audio is only used to measure who is talking.
 function addIn(pid,st){
   dropIn(pid);AU.init();
-  // Chrome only lets remote WebRTC audio flow into Web Audio while a media element also holds the stream
-  const el=new Audio();el.srcObject=st;el.muted=true;el.play().catch(()=>{});
-  let g=null,an=null;
-  try{const src=AU.c.createMediaStreamSource(st);g=AU.c.createGain();an=AU.c.createAnalyser();an.fftSize=512;src.connect(an);src.connect(g);g.connect(AU.c.destination);}
-  catch(e){el.muted=false;}
-  VOICE.inp.set(pid,{el,g,an,buf:new Float32Array(512),lvl:0});
+  const el=document.createElement('audio');el.autoplay=true;el.playsInline=true;el.setAttribute('playsinline','');el.hidden=true;
+  el.srcObject=st;el.muted=false;el.volume=1;document.body.appendChild(el);
+  let an=null;
+  try{const src=AU.c.createMediaStreamSource(st);an=AU.c.createAnalyser();an.fftSize=512;src.connect(an);}catch(e){}
+  VOICE.inp.set(pid,{el,g:null,an,buf:new Float32Array(512),lvl:0});
+  const m=VOICE.roster.get(pid),who=m?m.name:'友達';
+  el.play().then(()=>chatNote(`🔊 ${who}の声がつながりました`)).catch(()=>chatNote(`🔊 ${who}の声が届いています。画面をタップすると聞こえます`));
 }
-function dropIn(pid){const v=VOICE.inp.get(pid);if(!v)return;try{v.el.srcObject=null;v.g&&v.g.disconnect();}catch(e){}VOICE.inp.delete(pid);}
+function dropIn(pid){const v=VOICE.inp.get(pid);if(!v)return;try{v.el.pause();v.el.srcObject=null;v.el.remove();}catch(e){}VOICE.inp.delete(pid);}
+// phones only start sound after a touch: every touch or key press restarts any voice that is waiting
+function voiceUnlock(){try{AU.c&&AU.c.state==='suspended'&&AU.c.resume();}catch(e){}
+  for(const v of VOICE.inp.values())if(v.el&&v.el.paused)v.el.play().catch(()=>{});}
+for(const ev of['pointerdown','touchend','keydown'])document.addEventListener(ev,voiceUnlock,true);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)voiceUnlock();});
+// calls that dropped (or players who came in late) are called again
+setInterval(()=>{if(VOICE.on)callAll();},5000);
 function voiceReset(){
   for(const c of VOICE.out.values())try{c.close();}catch(e){}
   VOICE.out.clear();for(const pid of[...VOICE.inp.keys()])dropIn(pid);VOICE.roster.clear();
@@ -2799,9 +2809,9 @@ function voiceTick(){
   const inGame=G&&state!=='title'&&G.ps[G.me]&&G.ps[G.me].status==='alive';
   for(const[pid,v]of VOICE.inp){
     if(v.an){v.an.getFloatTimeDomainData(v.buf);let s=0;for(const x of v.buf)s+=x*x;v.lvl=Math.sqrt(s/v.buf.length);}
-    if(v.g){let vol=1;const m=VOICE.roster.get(pid),q=m&&inGame?G.ps[m.slot]:null;
+    {let vol=1;const m=VOICE.roster.get(pid),q=m&&inGame?G.ps[m.slot]:null;
       if(q&&q.status==='alive')vol=clamp(1.15-Math.hypot(q.dx-G.p.x,q.dy-G.p.y)/14,.15,1);
-      v.g.gain.setTargetAtTime(vol,AU.c.currentTime,.1);}
+      try{if(Math.abs(v.el.volume-vol)>.02)v.el.volume=vol;}catch(e){}}
   }
 }
 function speaking(slot){for(const[pid,v]of VOICE.inp){const m=VOICE.roster.get(pid);if(m&&m.slot===slot&&v.lvl>.02)return true;}return false;}
